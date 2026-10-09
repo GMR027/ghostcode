@@ -1,7 +1,6 @@
 # GhostCode — autocompletado de código con IA para VS Code
 
-**GhostCode** sugiere código mientras escribes, en *ghost text* (texto gris que aceptas con `Tab`), igual que
-GitHub Copilot. Puedes usarlo **gratis y sin internet** con un modelo en tu propio equipo (Ollama) o con un
+**GhostCode** sugiere código mientras escribes, en *ghost text* (texto gris que aceptas con `Tab`). Puedes usarlo **gratis y sin internet** con un modelo en tu propio equipo (Ollama) o con un
 proveedor en la nube (Claude, Codestral, OpenAI, DeepSeek, OpenRouter…). Además incluye un panel con
 herramientas para documentar, arreglar, explicar y organizar tu código, que funcionan con cualquier lenguaje.
 
