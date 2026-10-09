@@ -1,0 +1,16 @@
+#!/bin/sh
+# Al desinstalar (no al actualizar) se quita también la extensión de VS Code del usuario.
+# Ollama y los modelos descargados se conservan.
+set -e
+
+if [ "$1" = remove ]; then
+  user="${SUDO_USER:-}"
+  if [ -z "$user" ] && [ -n "${PKEXEC_UID:-}" ]; then user=$(id -nu "$PKEXEC_UID" 2>/dev/null || true); fi
+  if [ -n "$user" ] && [ "$user" != root ]; then
+    runuser -l "$user" -c '/usr/bin/ghostcode-setup --uninstall' >/dev/null 2>&1 \
+      && echo "GhostCode: extensión desinstalada de VS Code para $user." \
+      || echo "GhostCode: quita la extensión a mano si sigue instalada: code --uninstall-extension edgar.ghostcode"
+  fi
+fi
+
+exit 0

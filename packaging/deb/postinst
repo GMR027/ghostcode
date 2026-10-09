@@ -1,0 +1,30 @@
+#!/bin/sh
+# Las extensiones de VS Code son por usuario: se instala para quien ejecutó
+# `sudo apt install` (o el instalador gráfico). Ollama y el modelo se instalan
+# aparte con `ghostcode-setup`, para que apt no descargue gigas.
+set -e
+
+target_user() {
+  if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then echo "$SUDO_USER"; return; fi
+  if [ -n "${PKEXEC_UID:-}" ] && id -nu "$PKEXEC_UID" >/dev/null 2>&1; then id -nu "$PKEXEC_UID"; return; fi
+  u=$(logname 2>/dev/null || true)
+  if [ -n "$u" ] && [ "$u" != root ]; then echo "$u"; fi
+}
+
+if [ "$1" = configure ]; then
+  user=$(target_user)
+  if [ -n "$user" ]; then
+    echo "GhostCode: instalando la extensión en VS Code para el usuario $user…"
+    runuser -l "$user" -c '/usr/bin/ghostcode-setup --extension-only' \
+      || echo "GhostCode: no se pudo instalar la extensión (¿está VS Code instalado?). Ejecuta 'ghostcode-setup' como tu usuario."
+  else
+    echo "GhostCode: ejecuta 'ghostcode-setup' con tu usuario (no root) para instalar la extensión."
+  fi
+  echo
+  echo "GhostCode: para el modo Local (gratis, sin internet) ejecuta ahora, con tu usuario:"
+  echo "    ghostcode-setup"
+  echo "  instala Ollama si falta, elige el modelo según tu GPU/RAM y lo descarga."
+  echo "  Luego recarga VS Code: el icono de GhostCode aparece en la barra lateral."
+fi
+
+exit 0

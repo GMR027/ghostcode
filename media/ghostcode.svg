@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">
+  <!-- Al abrir VS Code el fantasma flota unos segundos y luego se queda quieto. -->
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="0 0;0 -1.8;0 0;0 -0.9;0 0" keyTimes="0;0.3;0.55;0.8;1" dur="2.4s" begin="0.8s" repeatCount="3"/>
+    <path d="M5 21V10a7 7 0 0 1 14 0v11l-2.33-1.75L14.33 21 12 19.25 9.67 21l-2.34-1.75z"/>
+    <path d="M9.5 9.5 7.5 11.5l2 2M14.5 9.5l2 2-2 2"/>
+  </g>
+</svg>

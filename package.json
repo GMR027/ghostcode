@@ -1,0 +1,454 @@
+{
+  "name": "ghostcode",
+  "displayName": "GhostCode — Autocompletado IA",
+  "description": "Autocompletado de código con IA (tipo Copilot) en local con Ollama o por API, más herramientas: documentar, arreglar errores, explicar código/SQL/regex y mensajes de commit.",
+  "version": "0.7.0",
+  "publisher": "edgar",
+  "author": {
+    "name": "GMR027",
+    "url": "https://github.com/GMR027"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GMR027/ghostcode.git"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Machine Learning",
+    "Other"
+  ],
+  "keywords": [
+    "autocomplete",
+    "copilot",
+    "ollama",
+    "ai",
+    "inline completion",
+    "ghost text"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "En carpetas no confiables GhostCode ignora la configuración del espacio de trabajo que decide a qué servidor se envía el código.",
+      "restrictedConfigurations": [
+        "ghostcode.mode",
+        "ghostcode.local.url",
+        "ghostcode.api.provider",
+        "ghostcode.api.baseUrl",
+        "ghostcode.api.model"
+      ]
+    }
+  },
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "ghostcode.selectMode",
+        "title": "GhostCode: Seleccionar modo (Local / API / Desactivado)"
+      },
+      {
+        "command": "ghostcode.selectLocalModel",
+        "title": "GhostCode: Elegir modelo local (Ollama)"
+      },
+      {
+        "command": "ghostcode.configureApi",
+        "title": "GhostCode: Configurar proveedor API"
+      },
+      {
+        "command": "ghostcode.setApiKey",
+        "title": "GhostCode: Guardar API key"
+      },
+      {
+        "command": "ghostcode.clearApiKey",
+        "title": "GhostCode: Borrar API key"
+      },
+      {
+        "command": "ghostcode.toggle",
+        "title": "GhostCode: Activar / desactivar"
+      },
+      {
+        "command": "ghostcode.toggleLanguage",
+        "title": "GhostCode: Activar / desactivar para este lenguaje"
+      },
+      {
+        "command": "ghostcode.trigger",
+        "title": "GhostCode: Sugerir ahora"
+      },
+      {
+        "command": "ghostcode.showLog",
+        "title": "GhostCode: Ver registro"
+      },
+      {
+        "command": "ghostcode.fixIndentation",
+        "title": "GhostCode: Corregir indentación"
+      },
+      {
+        "command": "ghostcode.annotate",
+        "title": "GhostCode: Anotar código seleccionado"
+      },
+      {
+        "command": "ghostcode.refreshPanel",
+        "title": "Actualizar",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "ghostcode.toggleHover",
+        "title": "GhostCode: Activar / desactivar explicaciones al pasar el puntero"
+      },
+      {
+        "command": "ghostcode.insertExplanation",
+        "title": "GhostCode: Insertar explicación como comentario"
+      },
+      {
+        "command": "ghostcode.documentFunction",
+        "title": "GhostCode: Documentar función"
+      },
+      {
+        "command": "ghostcode.fixWithAI",
+        "title": "GhostCode: Arreglar error con IA"
+      },
+      {
+        "command": "ghostcode.commitMessage",
+        "title": "GhostCode: Generar mensaje de commit",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "ghostcode.rename",
+        "title": "GhostCode: Renombrar con IA"
+      },
+      {
+        "command": "ghostcode.checkPaths",
+        "title": "GhostCode: Corrección de rutas (archivo y línea actual)"
+      },
+      {
+        "command": "ghostcode.checkProjectPaths",
+        "title": "GhostCode: Revisar rutas de todo el proyecto"
+      },
+      {
+        "command": "ghostcode.halo.analyze",
+        "title": "GhostCode: Halo IA — analizar un proyecto"
+      },
+      {
+        "command": "ghostcode.prompt.fromSelection",
+        "title": "GhostCode: Crear prompt del código seleccionado"
+      },
+      {
+        "command": "ghostcode.prompt.copy",
+        "title": "GhostCode: Copiar el último prompt"
+      },
+      {
+        "command": "ghostcode.prompt.save",
+        "title": "GhostCode: Guardar el último prompt en PROMPTS.md"
+      },
+      {
+        "command": "ghostcode.projectContext",
+        "title": "GhostCode: Prompt y contexto del proyecto (PROJECT-CONTEXT.md)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ghostcode",
+          "title": "GhostCode",
+          "icon": "media/ghostcode.svg"
+        }
+      ]
+    },
+    "views": {
+      "ghostcode": [
+        {
+          "type": "webview",
+          "id": "ghostcode.panel",
+          "name": "GhostCode"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "ghostcode.refreshPanel",
+          "when": "view == ghostcode.panel",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "ghostcode.annotate",
+          "when": "editorHasSelection",
+          "group": "1_modification@90"
+        },
+        {
+          "command": "ghostcode.fixIndentation",
+          "when": "editorTextFocus && !editorReadonly",
+          "group": "1_modification@91"
+        },
+        {
+          "command": "ghostcode.documentFunction",
+          "when": "editorTextFocus && !editorReadonly",
+          "group": "1_modification@92"
+        },
+        {
+          "command": "ghostcode.fixWithAI",
+          "when": "editorTextFocus && !editorReadonly",
+          "group": "1_modification@93"
+        },
+        {
+          "command": "ghostcode.rename",
+          "when": "editorTextFocus && !editorReadonly",
+          "group": "1_modification@94"
+        },
+        {
+          "command": "ghostcode.prompt.fromSelection",
+          "when": "editorHasSelection",
+          "group": "1_modification@95"
+        },
+        {
+          "command": "ghostcode.checkPaths",
+          "when": "editorTextFocus",
+          "group": "1_modification@96"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "ghostcode.refreshPanel",
+          "when": "false"
+        },
+        {
+          "command": "ghostcode.insertExplanation",
+          "when": "false"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "ghostcode.commitMessage",
+          "when": "scmProvider == git",
+          "group": "navigation@1"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "ghostcode.trigger",
+        "key": "alt+\\",
+        "when": "editorTextFocus && !editorReadonly"
+      },
+      {
+        "command": "editor.action.inlineSuggest.acceptNextWord",
+        "key": "ctrl+right",
+        "when": "inlineSuggestionVisible && !editorReadonly"
+      },
+      {
+        "command": "editor.action.inlineSuggest.acceptNextLine",
+        "key": "ctrl+alt+right",
+        "when": "inlineSuggestionVisible && !editorReadonly"
+      }
+    ],
+    "configuration": {
+      "title": "GhostCode",
+      "properties": {
+        "ghostcode.mode": {
+          "type": "string",
+          "enum": [
+            "local",
+            "api",
+            "off"
+          ],
+          "enumDescriptions": [
+            "Modelo local con Ollama (gratis, privado, sin internet)",
+            "Proveedor en la nube con API key",
+            "Desactivado"
+          ],
+          "default": "local",
+          "description": "De dónde salen las sugerencias."
+        },
+        "ghostcode.local.url": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "URL del servidor Ollama."
+        },
+        "ghostcode.local.model": {
+          "type": "string",
+          "default": "qwen2.5-coder:1.5b-base",
+          "description": "Modelo de Ollama. Usa modelos *base* con soporte FIM (qwen2.5-coder:*-base, deepseek-coder-v2, codegemma:code, starcoder2)."
+        },
+        "ghostcode.local.chatModel": {
+          "type": "string",
+          "default": "",
+          "description": "Modelo de Ollama para las herramientas (anotaciones). Debe ser un modelo instruct, p. ej. qwen2.5-coder:1.5b. Vacío = automático."
+        },
+        "ghostcode.annotationLanguage": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "es",
+            "en",
+            "pt",
+            "fr",
+            "de",
+            "it"
+          ],
+          "enumDescriptions": [
+            "Idioma de VS Code; si está en inglés por defecto, el del sistema (LANG)",
+            "Español",
+            "English",
+            "Português",
+            "Français",
+            "Deutsch",
+            "Italiano"
+          ],
+          "default": "auto",
+          "description": "Idioma de las anotaciones generadas por la IA."
+        },
+        "ghostcode.hoverExplain": {
+          "type": "boolean",
+          "default": true,
+          "description": "Al pasar el puntero sobre una función, método o clase, o sobre una consulta SQL o una expresión regular, mostrar una explicación generada por la IA. En modo API cada explicación nueva es una petición al proveedor (se guardan en caché)."
+        },
+        "ghostcode.fixPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "«Arreglar error con IA»: mostrar el cambio propuesto (vista previa) antes de aplicarlo."
+        },
+        "ghostcode.api.provider": {
+          "type": "string",
+          "enum": [
+            "anthropic",
+            "codestral",
+            "openai-compatible"
+          ],
+          "enumDescriptions": [
+            "Anthropic Claude",
+            "Mistral Codestral (FIM nativo, especializado en código)",
+            "Cualquier API compatible con OpenAI: OpenAI, DeepSeek, OpenRouter, Groq, LM Studio, vLLM, llama.cpp..."
+          ],
+          "default": "anthropic",
+          "description": "Proveedor usado en modo API."
+        },
+        "ghostcode.api.model": {
+          "type": "string",
+          "default": "",
+          "description": "Modelo del proveedor API. Vacío = el recomendado del proveedor."
+        },
+        "ghostcode.api.baseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "URL base del proveedor API. Vacío = la oficial del proveedor (obligatorio para openai-compatible que no sea OpenAI, p. ej. https://api.deepseek.com/v1)."
+        },
+        "ghostcode.api.useFim": {
+          "type": "boolean",
+          "default": true,
+          "description": "openai-compatible: intentar el endpoint /completions con 'suffix' (FIM). Si el servidor no lo soporta se usa /chat/completions automáticamente."
+        },
+        "ghostcode.debounceMs": {
+          "type": "number",
+          "default": 0,
+          "description": "Espera antes de pedir una sugerencia (ms). 0 = automático (120 local, 250 API)."
+        },
+        "ghostcode.maxPrefixChars": {
+          "type": "number",
+          "default": 6000,
+          "description": "Máximo de caracteres antes del cursor enviados como contexto."
+        },
+        "ghostcode.maxSuffixChars": {
+          "type": "number",
+          "default": 2000,
+          "description": "Máximo de caracteres después del cursor enviados como contexto."
+        },
+        "ghostcode.maxTokens": {
+          "type": "number",
+          "default": 256,
+          "description": "Máximo de tokens por sugerencia multilínea."
+        },
+        "ghostcode.temperature": {
+          "type": "number",
+          "default": 0.2,
+          "description": "Temperatura (local y APIs que la acepten)."
+        },
+        "ghostcode.multiline": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "always",
+            "never"
+          ],
+          "default": "auto",
+          "description": "Sugerencias de varias líneas."
+        },
+        "ghostcode.neighborTabs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Incluir fragmentos relevantes de otras pestañas abiertas como contexto."
+        },
+        "ghostcode.projectContext": {
+          "type": "boolean",
+          "default": true,
+          "description": "Incluir en el prompt la API real (firmas de clases, métodos y funciones) de lo que se usa cerca del cursor, a partir de un índice del proyecto. Funciona con cualquier lenguaje."
+        },
+        "ghostcode.disabledLanguages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "plaintext",
+            "markdown",
+            "scminput",
+            "dotenv"
+          ],
+          "description": "Lenguajes (languageId) donde no se sugiere."
+        },
+        "ghostcode.indentSize": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 16,
+          "description": "«Corregir indentación»: espacios por nivel. 0 = los del editor."
+        },
+        "ghostcode.pathCheck": {
+          "type": "boolean",
+          "default": true,
+          "description": "Marcar en Problemas las rutas (href, src, import, require, include, url()…) que no existen en el proyecto, con corrección rápida."
+        },
+        "ghostcode.halo.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Halo IA: usar los proyectos analizados (estilo y ejemplos de cómo escribes) en el autocompletado y las herramientas."
+        },
+        "ghostcode.promptsFile": {
+          "type": "string",
+          "default": "PROMPTS.md",
+          "description": "Archivo (relativo a la raíz del proyecto) donde «Crear md-prompt» guarda los prompts."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "node esbuild.mjs --tests && node --test out/test/*.test.js",
+    "package": "npm run typecheck && node esbuild.mjs --production && mkdir -p dist-vsix && vsce package --no-dependencies --allow-missing-repository -o dist-vsix/ghostcode-$npm_package_version.vsix",
+    "vscode:prepublish": "node esbuild.mjs --production",
+    "dist": "bash scripts/dist.sh",
+    "test:vscode": "bash scripts/test-vscode.sh",
+    "test:project": "bash scripts/test-project.sh",
+    "deb": "bash scripts/build-deb.sh",
+    "release": "bash scripts/release.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1"
+  }
+}

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Configura GhostCode para el usuario actual: extensión de VS Code, Ollama y modelo.
+# Opciones: ghostcode-setup --help
+if [ "$(id -u)" = 0 ]; then
+  echo "Ejecuta ghostcode-setup con tu usuario, sin sudo (VS Code instala las extensiones por usuario)." >&2
+  exit 1
+fi
+exec /usr/share/ghostcode/install.sh --vsix /usr/share/ghostcode/ghostcode.vsix "$@"
