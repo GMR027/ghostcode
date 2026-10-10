@@ -93,6 +93,10 @@
         "title": "GhostCode: Anotar código seleccionado"
       },
       {
+        "command": "ghostcode.goToSymbol",
+        "title": "GhostCode: Ir a la función"
+      },
+      {
         "command": "ghostcode.refreshPanel",
         "title": "Actualizar",
         "icon": "$(refresh)"
@@ -221,6 +225,10 @@
         },
         {
           "command": "ghostcode.insertExplanation",
+          "when": "false"
+        },
+        {
+          "command": "ghostcode.goToSymbol",
           "when": "false"
         }
       ],

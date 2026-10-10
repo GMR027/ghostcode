@@ -134,11 +134,14 @@ export class ExplainHoverProvider implements vscode.HoverProvider {
     const ref: ExplanationRef = { uri: target.doc.uri.toString(), line: symbol.range.start.line, lines };
     const insert = `command:ghostcode.insertExplanation?${encodeURIComponent(JSON.stringify([ref]))}`;
     const md = new vscode.MarkdownString(undefined, true);
-    md.isTrusted = { enabledCommands: ["ghostcode.insertExplanation", "workbench.view.extension.ghostcode"] };
+    md.isTrusted = { enabledCommands: ["ghostcode.insertExplanation", "ghostcode.goToSymbol", "workbench.view.extension.ghostcode"] };
     md.appendMarkdown(`$(sparkle) **GhostCode** · ${kind} \`${symbol.name.replace(/`/g, "")}\`\n\n`);
     // appendText cambia los espacios por &nbsp; y la ventana no haría saltos de línea.
     md.appendMarkdown(escapeMarkdown(lines.join(" ")));
-    md.appendMarkdown(`\n\n[$(comment) Insertar como comentario](${insert} "Añade esta explicación encima de la definición")`);
+    const at = symbol.selectionRange.start;
+    const go = `command:ghostcode.goToSymbol?${encodeURIComponent(JSON.stringify([{ uri: ref.uri, line: at.line, character: at.character }]))}`;
+    md.appendMarkdown(`\n\n[$(go-to-file) Ir a función](${go} "Abre el archivo donde está definida")`);
+    md.appendMarkdown(` &nbsp;·&nbsp; [$(comment) Insertar como comentario](${insert} "Añade esta explicación encima de la definición")`);
     return md;
   }
 

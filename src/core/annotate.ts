@@ -21,7 +21,7 @@ export function annotationRequest(code: string, languageId: string, filePath: st
   return {
     system: [
       "You are a senior developer writing a short explanatory comment for a code excerpt.",
-      "Explain what the code does and, if not obvious, how or why — in 1 to 4 short sentences.",
+      "Explain what the code does and, if not obvious, how or why — in ONE single sentence on ONE single line.",
       "Plain text only: no markdown, no code fences, no comment markers, do not repeat the code.",
       `Write in ${lang}.`,
     ].join("\n"),

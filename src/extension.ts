@@ -6,6 +6,7 @@ import {
 import { cfg, createBackend, update } from "./config";
 import type { Backend } from "./core/types";
 import { documentFunction } from "./document";
+import { askAssistant } from "./assistant";
 import { fixWithAI, GhostCodeActions } from "./fix";
 import { generateCommitMessage, GitInfo } from "./git";
 import { ExplainHoverProvider, type ExplanationRef } from "./hover";
@@ -130,6 +131,12 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("ghostcode.projectContext", async (target?: vscode.Uri) =>
       createProjectContext(context.secrets, toolMode(), log, files, project, await hasGit(), target),
     ),
+    vscode.commands.registerCommand("ghostcode.goToSymbol", async (ref: { uri: string; line: number; character: number }) => {
+      const pos = new vscode.Position(ref.line, ref.character);
+      await vscode.window.showTextDocument(vscode.Uri.parse(ref.uri), { selection: new vscode.Range(pos, pos) });
+      await vscode.commands.executeCommand("revealLine", { lineNumber: ref.line, at: "center" });
+    }),
+    vscode.commands.registerCommand("ghostcode.assistant.ask", (code: string) => askAssistant(context.secrets, toolMode(), log, code)),
     vscode.commands.registerCommand("ghostcode.annotate", () => annotateSelection(context.secrets, toolMode(), log)),
     vscode.commands.registerCommand("ghostcode.documentFunction", () => documentFunction(context.secrets, toolMode(), log)),
     vscode.commands.registerCommand("ghostcode.fixWithAI", (uri?: vscode.Uri, range?: vscode.Range) =>

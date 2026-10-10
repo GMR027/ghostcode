@@ -34,7 +34,7 @@ export function docRequest(code: string, kind: string, languageId: string, fileP
     system: [
       `You write reference documentation for a ${kind} written in ${languageId}.`,
       "Reply with ONLY a JSON object, no markdown fences, with this shape:",
-      '{"summary": "1-2 sentences", "params": [{"name": "exact parameter name", "type": "type or empty", "description": "short"}],' +
+      '{"summary": "ONE sentence on one line", "params": [{"name": "exact parameter name", "type": "type or empty", "description": "short"}],' +
         ' "returns": {"type": "type or empty", "description": "short"} or null, "throws": ["ExceptionType: when"]}',
       "Use the exact parameter names from the code (without $, *, & or type annotations). Infer types only if obvious.",
       'Use "returns": null when nothing is returned (constructors, procedures, classes).',
@@ -131,7 +131,7 @@ export function docStyle(languageId: string): Style {
   return STYLES[languageId] ?? "plain";
 }
 
-function wrap(text: string, width = 88): string[] {
+function wrap(text: string, width = Infinity): string[] {
   const out: string[] = [];
   let line = "";
   for (const word of text.split(/\s+/).filter(Boolean)) {

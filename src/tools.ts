@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { OllamaBackend } from "./backends/ollama";
 import { pullModel } from "./commands";
 import { cfg, createBackend, update, type Mode } from "./config";
-import { annotationRequest, formatAnnotation, resolveAnnotationLanguage } from "./core/annotate";
+import { annotationRequest, firstSentences, formatAnnotation, resolveAnnotationLanguage } from "./core/annotate";
 import { detectIndentUnit, normalizeIndentation, rescaleIndentation, transferIndentation } from "./core/indent";
 import { pickChatModel, suggestModels } from "./core/models";
 import { commentLines } from "./core/prompt";
@@ -178,7 +178,8 @@ export async function annotateSelection(secrets: vscode.SecretStorage, mode: Exc
 
   const text = await runChat(chat, req, "anotando", log);
   if (text === undefined) return;
-  const lines = formatAnnotation(text);
+  // Una sola línea: el editor la envuelve (Alt+Z) si es larga.
+  const lines = formatAnnotation(firstSentences(formatAnnotation(text, Infinity, 50).join(" "), 1), Infinity, 1);
   if (!lines.length) {
     void vscode.window.showWarningMessage("GhostCode: el modelo no devolvió ninguna anotación.");
     return;

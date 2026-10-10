@@ -188,7 +188,7 @@ function render() {
   const focus = focused?.id ? { id: focused.id, start: focused.selectionStart, end: focused.selectionEnd } : undefined;
   const content = {
     tools: () => toolsSection(s),
-    ai: () => haloSection(s) + promptSection(s),
+    ai: () => haloSection(s) + assistantSection(s) + promptSection(s),
     project: () => gitSection(s) + extensionsSection(s),
     models: () => modelsSection(s),
   }[current()]();
@@ -272,7 +272,7 @@ function toolsSection(s) {
       `<div class="tiles">
         ${tile("book", "Documentar función", "Genera la documentación de la función bajo el cursor", "document")}
         ${tile("tag", "Rename", "Sugiere un nombre según lo que hace la función seleccionada", "rename")}
-        ${tile("comment", "Anotar selección", "Inserta un comentario que explica el código", "annotate")}
+        ${tile("comment", "Anotar selección", "Inserta un comentario de una línea que explica el código", "annotate")}
       </div>`,
     ) +
       group(
@@ -350,6 +350,20 @@ function brokenList(list) {
 }
 
 // --- Halo IA ------------------------------------------------------------------------
+const HALO_TEXT = {
+  idle: "En reposo: añade una carpeta o repositorio para analizar",
+  working: "Analizando tu código…",
+  ready: "Listo: Halo IA ya puede actuar",
+};
+/** Halo al estilo del juego: gris en reposo, anillo animado al analizar, verde al terminar. */
+function haloOrb(status) {
+  const st = status === "working" || status === "ready" ? status : "idle";
+  return `<div class="halo-orb ${st}" role="status" aria-label="${HALO_TEXT[st]}">
+    <span class="ring"></span><span class="core"></span>
+    <span class="halo-label">${HALO_TEXT[st]}</span>
+  </div>`;
+}
+
 function haloSection(s) {
   const sources = (s.halo ?? [])
     .map(
@@ -376,7 +390,8 @@ function haloSection(s) {
     "halo",
     "Halo IA",
     "Aprende cómo escribes para sugerirte código a tu estilo",
-    `<p class="muted">Ingresa un repositorio o la ruta de la carpeta de un proyecto para que el modelo de IA (local o API) analice el código.
+    `${haloOrb(s.haloStatus)}
+    <p class="muted">Ingresa un repositorio o la ruta de la carpeta de un proyecto para que el modelo de IA (local o API) analice el código.
       El análisis se guarda en una caché temporal mientras VS Code esté abierto (usa «Guardar temporal» para conservarlo entre sesiones) y se usa al escribir como referencia de cómo escribes.</p>
     <div class="input-row">
       <input id="haloInput" type="text" placeholder="~/proyectos/mi-app  o  https://github.com/usuario/repo" aria-label="Ruta o repositorio">
@@ -397,6 +412,60 @@ function haloSection(s) {
         ? `<div class="tiles"><div class="tile"><span class="grow"><strong>Usar al escribir</strong><small>Autocompletado y herramientas imitan tu estilo</small></span>${toggle(s.haloEnabled, "toggleHalo", "Usar Halo IA")}</div></div>`
         : ""
     }`,
+  );
+}
+
+// --- Asistente ----------------------------------------------------------------------
+/** Markdown mínimo y seguro de la respuesta: títulos, listas, `código` y bloques. */
+function mdLite(text) {
+  const inline = (t) => esc(t).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  let html = "";
+  let list = false;
+  let fence = null;
+  const closeList = () => {
+    if (list) html += "</ul>";
+    list = false;
+  };
+  for (const line of text.split("\n")) {
+    if (/^\s*```/.test(line)) {
+      if (fence === null) {
+        closeList();
+        fence = [];
+      } else {
+        html += `<pre class="code">${esc(fence.join("\n"))}</pre>`;
+        fence = null;
+      }
+    } else if (fence) fence.push(line);
+    else if (/^#{1,4}\s/.test(line)) {
+      closeList();
+      html += `<h4>${inline(line.replace(/^#+\s*/, ""))}</h4>`;
+    } else if (/^\s*[-*•]\s+/.test(line)) {
+      if (!list) html += "<ul>";
+      list = true;
+      html += `<li>${inline(line.replace(/^\s*[-*•]\s+/, ""))}</li>`;
+    } else if (line.trim()) {
+      closeList();
+      html += `<p>${inline(line)}</p>`;
+    }
+  }
+  closeList();
+  if (fence) html += `<pre class="code">${esc(fence.join("\n"))}</pre>`;
+  return html;
+}
+
+function assistantSection(s) {
+  return section(
+    "assistant",
+    "sparkle",
+    "Asistente",
+    "Pega código y te explica qué hace, detecta errores y fallas de seguridad",
+    `<label class="field"><span>Código a revisar</span>
+      <textarea id="assistantInput" rows="8" spellcheck="false" placeholder="Pega aquí las líneas de código…"></textarea></label>
+    <div class="row-btns">
+      <button class="btn" data-action="assistantAsk" data-with="assistantInput" ${s.assistantBusy ? "disabled" : ""}>${icon("sparkle")}${s.assistantBusy ? "Revisando…" : "Explicar y revisar"}</button>
+      ${s.assistant ? `<button class="btn ghost" data-action="assistantClear">${icon("close")}Limpiar respuesta</button>` : ""}
+    </div>
+    ${s.assistant ? `<div class="assistant-reply">${mdLite(s.assistant)}</div>` : `<p class="muted">Usa el modelo local o la API que tengas activos en GhostCode.</p>`}`,
   );
 }
 

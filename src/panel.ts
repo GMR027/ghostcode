@@ -27,11 +27,11 @@ type Msg =
         | "ready" | "refresh" | "toggle" | "toggleHover" | "toggleProjectContext" | "togglePathCheck" | "toggleHalo"
         | "configureApi" | "annotate" | "document" | "fix" | "rename" | "checkPaths" | "checkProjectPaths"
         | "commit" | "gitInit" | "publish" | "openRemote" | "openScm" | "settings"
-        | "haloBrowse" | "haloWorkspace" | "haloSave" | "haloClear" | "prompt" | "projectContext" | "refreshExtensions";
+        | "haloBrowse" | "haloWorkspace" | "haloSave" | "haloClear" | "assistantClear" | "prompt" | "projectContext" | "refreshExtensions";
     }
   | { type: "indent"; spaces?: string }
   | { type: "indentSize"; value: string }
-  | { type: "haloAnalyze"; value: string }
+  | { type: "haloAnalyze" | "assistantAsk"; value: string }
   | { type: "haloRemove"; id: string }
   | { type: "copyPrompt" | "savePrompt"; value: string }
   | { type: "installExt" | "showExt"; id: string }
@@ -90,6 +90,9 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
   /** Último prompt generado con «Prompt». */
   prompt?: GeneratedPrompt;
   private promptBusy = false;
+  /** Respuesta del Asistente a la última consulta. */
+  private assistant?: { code: string; text: string };
+  private assistantBusy = false;
   /** «Mostrar rutas rotas»: la lista está desplegada en el panel. */
   private brokenShown = false;
   private brokenBusy = false;
@@ -174,6 +177,22 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
         return this.services.halo.clear();
       case "haloRemove":
         return this.services.halo.remove(m.id);
+      case "assistantAsk": {
+        if (this.assistantBusy) return;
+        this.assistantBusy = true;
+        await this.post();
+        try {
+          const text = await vscode.commands.executeCommand<string | undefined>("ghostcode.assistant.ask", m.value);
+          if (text) this.assistant = { code: m.value, text };
+        } finally {
+          this.assistantBusy = false;
+          await this.post();
+        }
+        return;
+      }
+      case "assistantClear":
+        this.assistant = undefined;
+        return void this.post();
       case "prompt":
         this.promptBusy = true;
         await this.post();
@@ -314,8 +333,11 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
       brokenPaths: this.brokenShown ? this.services.paths.broken() : [],
       version: String(this.context.extension.packageJSON.version ?? ""),
       haloEnabled: c.haloEnabled,
+      haloStatus: this.services.halo.busy ? "working" : this.services.halo.list().length ? "ready" : "idle",
       haloPersisted: this.services.halo.isPersisted,
       halo: this.services.halo.list().map((h) => ({ id: h.id, name: h.name, input: h.input, files: h.files, functions: h.functions, tags: h.styleTags, summary: h.summary, cloned: h.cloned })),
+      assistant: this.assistant?.text,
+      assistantBusy: this.assistantBusy,
       prompt: this.prompt,
       promptBusy: this.promptBusy,
       promptsFile: c.promptsFile,

@@ -132,6 +132,13 @@ export class HaloService implements vscode.Disposable {
     }
   }
 
+  private running = 0;
+
+  /** ¿Hay un análisis en curso? (el halo del panel se anima mientras tanto). */
+  get busy(): boolean {
+    return this.running > 0;
+  }
+
   get active(): boolean {
     return cfg().haloEnabled && this.sources.length > 0;
   }
@@ -142,6 +149,8 @@ export class HaloService implements vscode.Disposable {
       void vscode.window.showInformationMessage("GhostCode: escribe la ruta de una carpeta o la URL de un repositorio.");
       return undefined;
     }
+    this.running++;
+    this.changed.fire();
     return vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: "Halo IA", cancellable: false },
       async (progress) => {
@@ -202,6 +211,17 @@ export class HaloService implements vscode.Disposable {
         this.log.info(`Halo IA: ${source.name} · ${files.length} archivos · ${examples.length} ejemplos · ${styleHint(profile)}`);
         vscode.window.setStatusBarMessage(`$(sparkle) Halo IA: ${source.name} analizado (${files.length} archivos)`, 6000);
         return source;
+      },
+    ).then(
+      (r) => {
+        this.running--;
+        this.changed.fire();
+        return r;
+      },
+      (err) => {
+        this.running--;
+        this.changed.fire();
+        throw err;
       },
     );
   }
