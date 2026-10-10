@@ -30,12 +30,13 @@ Todas están en el panel de GhostCode (icono del fantasma en la barra lateral), 
 |---|---|---|
 | **Herramientas** | **Documentar función** | Escribe la documentación de la función bajo el cursor en el formato del lenguaje: JSDoc, PHPDoc, Javadoc, docstring de Python, `///` de C#/Rust/Swift, Go, Ruby, Lua, R… |
 | | **Rename** | Sugiere 3 nombres según lo que hace la función seleccionada (en la convención del archivo) y la renombra en todo el proyecto. |
-| | **Anotar selección** | Inserta encima del código seleccionado un comentario que explica qué hace. |
+| | **Anotar selección** | Inserta encima del código seleccionado un comentario de una línea que explica qué hace. |
 | | **Arreglar error con IA** | Sobre cualquier error o advertencia (también con `Ctrl+.`) propone un arreglo y te muestra el cambio antes de aplicarlo. |
 | | **Corrección de rutas** | Revisa `href`, `src`, `import`, `require`, `include`, `url()`, `@use`… y marca las rutas que no existen en tu proyecto, con la corrección propuesta. **Mostrar rutas rota(s)** las lista por archivo con «Ir» y «Corregir». |
 | | **Corregir indentación** | Corrige la sangría de la selección o del archivo con el número de espacios que elijas, sin tocar nada más. |
-| | **Explicar al pasar el puntero** | Al pasar el ratón sobre una función, clase, consulta **SQL** o **expresión regular**, muestra qué hace (y avisa si un SQL es vulnerable a inyección). |
-| **IA** | **Halo IA** | Analiza una carpeta o un repositorio tuyo y aprende cómo escribes (estilo, nombres, hábitos). Mientras VS Code esté abierto, el autocompletado y las herramientas imitan tu estilo. **Guardar temporal** conserva el análisis al cerrar y reabrir VS Code (sin volver a meter las carpetas) hasta que pulses **Limpiar**. |
+| | **Explicar al pasar el puntero** | Al pasar el ratón sobre una función, clase, consulta **SQL** o **expresión regular**, muestra qué hace (y avisa si un SQL es vulnerable a inyección). El botón **Ir a función** abre el archivo donde está definida. |
+| **IA** | **Halo IA** | Analiza una carpeta o un repositorio tuyo y aprende cómo escribes (estilo, nombres, hábitos). Un indicador (halo) pasa de gris a un anillo animado mientras analiza y a verde cuando está listo. Mientras VS Code esté abierto, el autocompletado y las herramientas imitan tu estilo. **Guardar temporal** conserva el análisis al cerrar y reabrir VS Code (sin volver a meter las carpetas) hasta que pulses **Limpiar**. |
+| | **Asistente** | Pega unas líneas de código y te explica qué hace, detecta errores y señala fallas de seguridad, con tu modelo local o tu API. |
 | | **Prompt** | Convierte el código seleccionado en un prompt reutilizable para otro proyecto: **Copiar** o **Crear md-prompt** (lo guarda en `PROMPTS.md`). **Prompt y contexto del proyecto** crea `PROJECT-CONTEXT.md`: de qué trata, objetivo, lenguajes, estructura, frontend y backend. |
 | **Proyecto** | **Conexión GitHub** | Repositorio, rama, cambios y remoto; si no hay repositorio, lo indica. **Generar mensaje de commit** escribe el mensaje a partir de tus cambios. |
 | | **Extensiones recomendadas** | Según los lenguajes y herramientas del proyecto, con botón para instalarlas. |
@@ -66,11 +67,11 @@ Los instaladores están en la carpeta [`releases/`](releases/) de este repositor
 
 ### Opción 1 — Debian, Ubuntu, Linux Mint, Zorin OS, Pop!_OS… (recomendada)
 
-1. Descarga [`ghostcode_0.7.0_all.deb`](releases/ghostcode_0.7.0_all.deb) (botón **Download raw file**).
+1. Descarga [`ghostcode_0.8.0_all.deb`](releases/ghostcode_0.8.0_all.deb) (botón **Download raw file**).
 2. Instálalo (añade la extensión a tu VS Code y el comando `ghostcode-setup`):
 
    ```bash
-   sudo apt install ./ghostcode_0.7.0_all.deb
+   sudo apt install ./ghostcode_0.8.0_all.deb
    ```
 
 3. Con tu usuario (sin `sudo`), configura el modo:
@@ -95,11 +96,11 @@ Para desinstalar: `sudo apt remove ghostcode` (Ollama y los modelos se conservan
 
 ### Opción 2 — Cualquier sistema (Windows, macOS u otras distribuciones Linux)
 
-1. Descarga [`ghostcode-0.7.0.vsix`](releases/ghostcode-0.7.0.vsix).
+1. Descarga [`ghostcode-0.8.0.vsix`](releases/ghostcode-0.8.0.vsix).
 2. Instálalo en VS Code: menú **Extensiones** → `···` → **Instalar desde VSIX…**, o en una terminal:
 
    ```bash
-   code --install-extension ghostcode-0.7.0.vsix
+   code --install-extension ghostcode-0.8.0.vsix
    ```
 
 3. Para el modo Local, instala [Ollama](https://ollama.com/download) y descarga los modelos:
@@ -109,8 +110,8 @@ Para desinstalar: `sudo apt remove ghostcode` (Ollama y los modelos se conservan
    ollama pull qwen2.5-coder:3b          # herramientas (documentar, arreglar, explicar…)
    ```
 
-En otras distribuciones Linux también puedes usar [`ghostcode-0.7.0-linux.tar.gz`](releases/ghostcode-0.7.0-linux.tar.gz),
-que trae el mismo instalador: `tar xzf ghostcode-0.7.0-linux.tar.gz && cd ghostcode && ./install.sh`.
+En otras distribuciones Linux también puedes usar [`ghostcode-0.8.0-linux.tar.gz`](releases/ghostcode-0.8.0-linux.tar.gz),
+que trae el mismo instalador: `tar xzf ghostcode-0.8.0-linux.tar.gz && cd ghostcode && ./install.sh`.
 
 ### Opción 3 — Desde el código fuente
 
