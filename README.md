@@ -39,7 +39,7 @@ Todas están en el panel de GhostCode (icono del fantasma en la barra lateral), 
 | | **Asistente** | Pega unas líneas de código y te explica qué hace, detecta errores y señala fallas de seguridad, con tu modelo local o tu API. |
 | | **Prompt** | Convierte el código seleccionado en un prompt reutilizable para otro proyecto: **Copiar** o **Crear md-prompt** (lo guarda en `PROMPTS.md`). **Prompt y contexto del proyecto** crea `PROJECT-CONTEXT.md`: de qué trata, objetivo, lenguajes, estructura, frontend y backend. |
 | **Proyecto** | **Conexión GitHub** | Repositorio, rama, cambios y remoto; si no hay repositorio, lo indica. **Generar mensaje de commit** escribe el mensaje a partir de tus cambios. |
-| | **Extensiones recomendadas** | Según los lenguajes y herramientas del proyecto, con botón para instalarlas. |
+| | **Extensiones recomendadas** | Según los lenguajes y herramientas del proyecto, con botón para instalarlas. En VSCodium (que usa Open VSX) algunas de Microsoft, como Pylance o C# Dev Kit, pueden no estar disponibles: el botón avisa y puedes buscarlas con **Ver**. |
 | **Modelos** | **Modelos** | Los modelos que tienes en Ollama y los recomendados para tu GPU y RAM, con descarga en un clic. |
 
 ---
@@ -48,7 +48,7 @@ Todas están en el panel de GhostCode (icono del fantasma en la barra lateral), 
 
 | Necesitas | Para qué | Cómo conseguirlo |
 |---|---|---|
-| **Visual Studio Code 1.90 o superior** (o VSCodium) | Es donde funciona GhostCode | [code.visualstudio.com](https://code.visualstudio.com/) |
+| **Visual Studio Code 1.90 o superior** y/o **VSCodium** | Es donde funciona GhostCode (funciona igual en los dos) | [code.visualstudio.com](https://code.visualstudio.com/) · [vscodium.com](https://vscodium.com/) |
 | **Ollama** | Modo Local (gratis y sin internet) | El instalador `.deb` lo instala por ti (`ghostcode-setup`); también desde [ollama.com/download](https://ollama.com/download) |
 | **Espacio en disco: 1–5 GB** | Los modelos locales | — |
 | **8 GB de RAM** (16 GB recomendado) | Modo Local | Con GPU (NVIDIA, AMD o Apple Silicon) las sugerencias son mucho más rápidas, pero no es obligatoria |
@@ -67,11 +67,11 @@ Los instaladores están en la carpeta [`releases/`](releases/) de este repositor
 
 ### Opción 1 — Debian, Ubuntu, Linux Mint, Zorin OS, Pop!_OS… (recomendada)
 
-1. Descarga [`ghostcode_0.8.0_all.deb`](releases/ghostcode_0.8.0_all.deb) (botón **Download raw file**).
+1. Descarga [`ghostcode_0.8.1_all.deb`](releases/ghostcode_0.8.1_all.deb) (botón **Download raw file**).
 2. Instálalo (añade la extensión a tu VS Code y el comando `ghostcode-setup`):
 
    ```bash
-   sudo apt install ./ghostcode_0.8.0_all.deb
+   sudo apt install ./ghostcode_0.8.1_all.deb
    ```
 
 3. Con tu usuario (sin `sudo`), configura el modo:
@@ -90,17 +90,18 @@ Los instaladores están en la carpeta [`releases/`](releases/) de este repositor
    | GPU con 3 GB o más, o 16 GB de RAM | `qwen2.5-coder:1.5b-base` |
    | Menos | `qwen2.5-coder:0.5b-base` |
 
-4. Abre (o recarga) VS Code.
+4. Abre (o recarga) tu editor. El instalador añade la extensión a **todos** los que encuentre (VS Code, VSCodium, Code - OSS…); si solo quieres uno: `ghostcode-setup --editor codium`.
 
 Para desinstalar: `sudo apt remove ghostcode` (Ollama y los modelos se conservan).
 
 ### Opción 2 — Cualquier sistema (Windows, macOS u otras distribuciones Linux)
 
-1. Descarga [`ghostcode-0.8.0.vsix`](releases/ghostcode-0.8.0.vsix).
-2. Instálalo en VS Code: menú **Extensiones** → `···` → **Instalar desde VSIX…**, o en una terminal:
+1. Descarga [`ghostcode-0.8.1.vsix`](releases/ghostcode-0.8.1.vsix).
+2. Instálalo en tu editor: menú **Extensiones** → `···` → **Instalar desde VSIX…**, o en una terminal (el mismo `.vsix` sirve para los dos):
 
    ```bash
-   code --install-extension ghostcode-0.8.0.vsix
+   code --install-extension ghostcode-0.8.1.vsix      # VS Code
+   codium --install-extension ghostcode-0.8.1.vsix    # VSCodium
    ```
 
 3. Para el modo Local, instala [Ollama](https://ollama.com/download) y descarga los modelos:
@@ -110,8 +111,8 @@ Para desinstalar: `sudo apt remove ghostcode` (Ollama y los modelos se conservan
    ollama pull qwen2.5-coder:3b          # herramientas (documentar, arreglar, explicar…)
    ```
 
-En otras distribuciones Linux también puedes usar [`ghostcode-0.8.0-linux.tar.gz`](releases/ghostcode-0.8.0-linux.tar.gz),
-que trae el mismo instalador: `tar xzf ghostcode-0.8.0-linux.tar.gz && cd ghostcode && ./install.sh`.
+En otras distribuciones Linux también puedes usar [`ghostcode-0.8.1-linux.tar.gz`](releases/ghostcode-0.8.1-linux.tar.gz),
+que trae el mismo instalador: `tar xzf ghostcode-0.8.1-linux.tar.gz && cd ghostcode && ./install.sh`.
 
 ### Opción 3 — Desde el código fuente
 
@@ -122,7 +123,8 @@ git clone https://github.com/GMR027/ghostcode.git
 cd ghostcode
 npm ci
 npm run package                # crea dist-vsix/ghostcode-<versión>.vsix
-code --install-extension dist-vsix/ghostcode-*.vsix
+npm run install:editors        # lo instala en todos los editores que encuentre (code, codium…); solo Linux/macOS con bash
+# o a mano, en uno: code --install-extension dist-vsix/ghostcode-*.vsix   /   codium --install-extension dist-vsix/ghostcode-*.vsix
 ```
 
 ---

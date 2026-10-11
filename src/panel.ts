@@ -218,7 +218,9 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
           await vscode.commands.executeCommand("workbench.extensions.installExtension", m.id);
           vscode.window.setStatusBarMessage(`$(check) Extensión ${m.id} instalada`, 5000);
         } catch (err) {
-          void vscode.window.showErrorMessage(`No se pudo instalar ${m.id}: ${(err as Error).message}`);
+          // VSCodium y otros editores usan Open VSX: algunas extensiones de Microsoft (Pylance, C#…) solo están en su Marketplace.
+          const other = /^Visual Studio Code/i.test(vscode.env.appName) ? "" : ` Si ${vscode.env.appName} usa otro registro (Open VSX), puede que esta extensión no esté disponible allí: búscala con «Ver».`;
+          void vscode.window.showErrorMessage(`No se pudo instalar ${m.id}: ${(err as Error).message}.${other}`);
         }
         this.recommendations = undefined;
         return this.post();

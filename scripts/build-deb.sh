@@ -30,14 +30,14 @@ Priority: optional
 Depends: bash, util-linux
 Recommends: curl, python3
 Installed-Size: $(du -sk "$ROOT/usr" | cut -f1)
-Description: GhostCode - autocompletado de código con IA para VS Code
+Description: GhostCode - autocompletado de código con IA para VS Code y VSCodium
  Sugerencias en ghost text mientras escribes, como GitHub Copilot, con un
  modelo local en Ollama (gratis, privado, sin internet) o una API en la nube
  (Claude, Codestral, OpenAI, DeepSeek...). Incluye un panel lateral con
  modelos sugeridos según el hardware y herramientas para corregir la
  indentación y anotar código.
  .
- Al instalarse añade la extensión al VS Code del usuario que ejecutó sudo.
+ Al instalarse añade la extensión a VS Code y/o VSCodium del usuario que ejecutó sudo.
  Ejecuta 'ghostcode-setup' con tu usuario para instalar Ollama y el modelo.
 EOF
 

@@ -2,7 +2,7 @@
   "name": "ghostcode",
   "displayName": "GhostCode — Autocompletado IA",
   "description": "Autocompletado de código con IA (tipo Copilot) en local con Ollama o por API, más herramientas: documentar, arreglar errores, explicar código/SQL/regex y mensajes de commit.",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "publisher": "edgar",
   "author": {
     "name": "GMR027",
@@ -447,7 +447,8 @@
     "test:vscode": "bash scripts/test-vscode.sh",
     "test:project": "bash scripts/test-project.sh",
     "deb": "bash scripts/build-deb.sh",
-    "release": "bash scripts/release.sh"
+    "release": "bash scripts/release.sh",
+    "install:editors": "bash scripts/install.sh --extension-only"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

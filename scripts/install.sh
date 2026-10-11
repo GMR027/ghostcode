@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Instalador de GhostCode (autocompletado IA para VS Code) en Linux.
+# Instalador de GhostCode (autocompletado IA para VS Code y VSCodium) en Linux.
+# Por defecto instala en TODOS los editores que encuentre: code, code-insiders, codium, vscodium, code-oss.
 #
 #   ./install.sh                      instalación interactiva
 #   ./install.sh --mode local --yes   sin preguntas, modo local, modelo según hardware
-#   ./install.sh --mode api           solo la extensión (luego eliges proveedor en VS Code)
+#   ./install.sh --mode api           solo la extensión (luego eliges proveedor en el editor)
 #   ./install.sh --model qwen2.5-coder:7b-base
+#   ./install.sh --editor codium      solo en ese editor (en vez de en todos)
 #   ./install.sh --uninstall
 #   ./install.sh --extension-only     solo instala/actualiza la extensión (lo usa el paquete .deb)
 set -euo pipefail
@@ -24,7 +26,7 @@ ok()   { echo "${c_green}✔${c_off} $*"; }
 warn() { echo "${c_yellow}!${c_off} $*"; }
 die()  { echo "${c_red}✘ $*${c_off}" >&2; exit 1; }
 
-usage() { sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
+usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -46,29 +48,48 @@ confirm() { # confirm "pregunta" → 0 si sí
   [[ -z "$r" || "$r" =~ ^[sSyY] ]]
 }
 
-# --- Editor: VS Code, VS Code Insiders o VSCodium --------------------------------
-find_editor() {
-  if [[ -n "$EDITOR_CLI" ]]; then command -v "$EDITOR_CLI" >/dev/null || die "No se encontró '$EDITOR_CLI'"; return; fi
-  for c in code code-insiders codium; do
-    if command -v "$c" >/dev/null 2>&1; then EDITOR_CLI="$c"; return; fi
+# --- Editores: VS Code, VS Code Insiders, VSCodium o Code - OSS -------------------
+EDITORS=()
+find_editors() {
+  if [[ -n "$EDITOR_CLI" ]]; then
+    command -v "$EDITOR_CLI" >/dev/null || die "No se encontró '$EDITOR_CLI'"
+    EDITORS=("$EDITOR_CLI")
+    return
+  fi
+  local c
+  for c in code code-insiders codium vscodium code-oss; do
+    command -v "$c" >/dev/null 2>&1 && EDITORS+=("$c")
   done
-  die "No se encontró VS Code ('code'). Instálalo desde https://code.visualstudio.com/ y vuelve a ejecutar."
+  [[ ${#EDITORS[@]} -gt 0 ]] || die "No se encontró ningún editor (code, codium…). Instala VS Code (https://code.visualstudio.com/) o VSCodium (https://vscodium.com/) y vuelve a ejecutar."
 }
 
-settings_file() {
-  case "$EDITOR_CLI" in
+settings_file() { # settings_file <editor>
+  case "$1" in
     code-insiders) echo "$HOME/.config/Code - Insiders/User/settings.json" ;;
-    codium) echo "$HOME/.config/VSCodium/User/settings.json" ;;
+    codium|vscodium) echo "$HOME/.config/VSCodium/User/settings.json" ;;
+    code-oss) echo "$HOME/.config/Code - OSS/User/settings.json" ;;
     *) echo "$HOME/.config/Code/User/settings.json" ;;
   esac
 }
 
+# Instala el .vsix en un editor; un fallo en uno no impide instalar en los demás.
+INSTALLED=()
+install_ext() { # install_ext <editor>
+  if "$1" --install-extension "$VSIX" --force >/dev/null 2>&1; then
+    ok "Extensión instalada en $1"
+    INSTALLED+=("$1")
+  else
+    warn "No se pudo instalar en $1 (¿está cerrado el editor o hay un error de permisos?). Prueba a mano: $1 --install-extension \"$VSIX\""
+  fi
+}
+
 # Escribe ajustes ghostcode.* en settings.json (admite comentarios/comas finales de VS Code).
-write_settings() { # write_settings clave=valorJSON ...
-  local file; file="$(settings_file)"
+write_settings() { # write_settings <editor> clave=valorJSON ...
+  local editor="$1"; shift
+  local file; file="$(settings_file "$editor")"
   mkdir -p "$(dirname "$file")"
   [[ -f "$file" ]] || echo "{}" >"$file"
-  command -v python3 >/dev/null 2>&1 || { warn "python3 no está disponible; configura GhostCode desde VS Code (barra de estado)."; return; }
+  command -v python3 >/dev/null 2>&1 || { warn "python3 no está disponible; configura GhostCode desde el editor (barra de estado)."; return; }
   python3 - "$file" "$@" <<'EOF'
 import json, re, shutil, sys
 file, pairs = sys.argv[1], sys.argv[2:]
@@ -91,8 +112,10 @@ EOF
 
 # --- Desinstalar ------------------------------------------------------------------
 if [[ $UNINSTALL -eq 1 ]]; then
-  find_editor
-  "$EDITOR_CLI" --uninstall-extension "$EXT_ID" && ok "Extensión desinstalada de $EDITOR_CLI"
+  find_editors
+  for e in "${EDITORS[@]}"; do
+    if "$e" --uninstall-extension "$EXT_ID" >/dev/null 2>&1; then ok "Extensión desinstalada de $e"; else warn "No estaba instalada en $e"; fi
+  done
   warn "Ollama y los modelos descargados se conservan. Para borrarlos: 'ollama rm <modelo>' y ver https://github.com/ollama/ollama/blob/main/docs/linux.md"
   exit 0
 fi
@@ -104,12 +127,12 @@ if [[ -z "$VSIX" ]]; then
 fi
 [[ -n "$VSIX" && -f "$VSIX" ]] || die "No se encontró el archivo .vsix (genéralo con 'npm run package' o pásalo con --vsix)."
 
-find_editor
-info "Editor: $EDITOR_CLI · Paquete: $(basename "$VSIX")"
+find_editors
+info "Editores: ${EDITORS[*]} · Paquete: $(basename "$VSIX")"
 
 if [[ $EXT_ONLY -eq 1 ]]; then
-  "$EDITOR_CLI" --install-extension "$VSIX" --force >/dev/null
-  ok "Extensión instalada en $EDITOR_CLI"
+  for e in "${EDITORS[@]}"; do install_ext "$e"; done
+  [[ ${#INSTALLED[@]} -gt 0 ]] || exit 1
   exit 0
 fi
 
@@ -117,7 +140,7 @@ fi
 if [[ -z "$MODE" ]]; then
   if [[ $YES -eq 1 ]]; then MODE="local"; else
     echo
-    echo "¿Qué modo quieres usar? (se puede cambiar después desde la barra de estado de VS Code)"
+    echo "¿Qué modo quieres usar? (se puede cambiar después desde la barra de estado del editor)"
     echo "  1) Local  — modelo en este equipo con Ollama (gratis, privado, sin internet)"
     echo "  2) API    — proveedor en la nube con API key (Claude, Codestral, OpenAI, DeepSeek…)"
     echo "  3) Ambos  — instala Ollama y deja todo listo para alternar"
@@ -205,8 +228,8 @@ fi
 
 # --- Extensión --------------------------------------------------------------------
 info "Instalando la extensión…"
-"$EDITOR_CLI" --install-extension "$VSIX" --force >/dev/null
-ok "Extensión instalada en $EDITOR_CLI"
+for e in "${EDITORS[@]}"; do install_ext "$e"; done
+[[ ${#INSTALLED[@]} -gt 0 ]] || die "No se pudo instalar la extensión en ningún editor."
 
 settings=()
 case "$MODE" in
@@ -215,11 +238,13 @@ case "$MODE" in
 esac
 # Activar el ghost text del editor por si estaba desactivado.
 settings+=("editor.inlineSuggest.enabled=true")
-write_settings "${settings[@]}"
-ok "Configuración guardada en $(settings_file)"
+for e in "${INSTALLED[@]}"; do
+  write_settings "$e" "${settings[@]}"
+  ok "Configuración guardada en $(settings_file "$e")"
+done
 
 echo
-ok "¡Listo! Abre (o recarga) VS Code."
+ok "¡Listo! Abre (o recarga) tu editor: ${INSTALLED[*]}."
 echo "   • El ghost text aparece al escribir. Tab = aceptar · Ctrl+→ = aceptar palabra · Esc = descartar · Alt+\\ = pedir sugerencia"
 echo "   • Clic en «GhostCode» en la barra de estado para cambiar entre Local / API / Desactivado"
 if [[ "$MODE" != "local" ]]; then
