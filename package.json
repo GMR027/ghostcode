@@ -2,7 +2,7 @@
   "name": "ghostcode",
   "displayName": "GhostCode — Autocompletado IA",
   "description": "Autocompletado de código con IA (tipo Copilot) en local con Ollama o por API, más herramientas: documentar, arreglar errores, explicar código/SQL/regex y mensajes de commit.",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "publisher": "edgar",
   "author": {
     "name": "GMR027",
@@ -392,6 +392,11 @@
           "type": "boolean",
           "default": true,
           "description": "Incluir fragmentos relevantes de otras pestañas abiertas como contexto."
+        },
+        "ghostcode.useConexiones": {
+          "type": "boolean",
+          "default": true,
+          "description": "Si tienes instalada la extensión Conexiones, usar la documentación que guardaste en ella (solo si viene al caso) para dar mejores respuestas."
         },
         "ghostcode.projectContext": {
           "type": "boolean",

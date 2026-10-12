@@ -3,6 +3,8 @@ import { cfg, type Mode } from "./config";
 import { LANGUAGE_NAMES, resolveAnnotationLanguage } from "./core/annotate";
 import { fixRequest, parseFix, type Problem } from "./core/fix";
 import { documentSymbols, enclosingSymbol } from "./symbols";
+import { buildQuery } from "./core/docs";
+import { withConexiones } from "./conexiones";
 import { chatBackend, runChat } from "./tools";
 
 const MAX_BLOCK_LINES = 150;
@@ -91,7 +93,8 @@ export async function fixWithAI(
   const backend = await chatBackend(secrets, mode);
   if (!backend) return;
   const lang = LANGUAGE_NAMES[resolveAnnotationLanguage(cfg().annotationLanguage, vscode.env.language, process.env).slice(0, 2)] ?? "English";
-  const raw = await runChat(backend, fixRequest(code, problems, doc.languageId, vscode.workspace.asRelativePath(doc.uri), lang), "buscando un arreglo", log);
+  const docs = await withConexiones(fixRequest(code, problems, doc.languageId, vscode.workspace.asRelativePath(doc.uri), lang), buildQuery(...problems.map((p) => p.message), code.slice(0, 600)), [doc.languageId]);
+  const raw = await runChat(backend, docs.req, "buscando un arreglo", log);
   if (raw === undefined) return;
   const fix = parseFix(raw, code);
   if (!fix || fix.code === code.replace(/\s+$/, "")) {

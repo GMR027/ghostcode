@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 import { cfg, type Mode } from "./config";
 import { LANGUAGE_NAMES, resolveAnnotationLanguage } from "./core/annotate";
 import { assistantRequest, cleanAssistantReply, guessLanguage } from "./core/assistant";
+import { buildQuery, sourcesFooter } from "./core/docs";
+import { withConexiones } from "./conexiones";
 import { chatBackend, runChat } from "./tools";
 
 /** Explica el código pegado en el panel y lo revisa (errores y seguridad). Undefined si se canceló o falló. */
@@ -15,8 +17,10 @@ export async function askAssistant(secrets: vscode.SecretStorage, mode: Exclude<
   if (!backend) return undefined;
   const lang = LANGUAGE_NAMES[resolveAnnotationLanguage(cfg().annotationLanguage, vscode.env.language, process.env).slice(0, 2)] ?? "English";
   const editorLang = vscode.window.activeTextEditor?.document.languageId ?? "unknown";
-  const raw = await runChat(backend, assistantRequest(text.slice(0, 15_000), guessLanguage(text, editorLang), lang), "revisando el código", log);
+  // Con Conexiones instalada, la IA también ve la documentación guardada que venga al caso.
+  const docs = await withConexiones(assistantRequest(text.slice(0, 15_000), guessLanguage(text, editorLang), lang), buildQuery(text.slice(0, 1200)), [editorLang]);
+  const raw = await runChat(backend, docs.req, "revisando el código", log);
   if (raw === undefined) return undefined;
   const reply = cleanAssistantReply(raw);
-  return reply || undefined;
+  return reply ? reply + sourcesFooter(docs.sources) : undefined;
 }
