@@ -24,7 +24,7 @@ export interface PanelServices {
 type Msg =
   | {
       type:
-        | "ready" | "refresh" | "toggle" | "toggleHover" | "toggleProjectContext" | "togglePathCheck" | "toggleHalo"
+        | "ready" | "refresh" | "toggle" | "toggleHover" | "toggleLiveRename" | "toggleBem" | "bemApply" | "toggleProjectContext" | "togglePathCheck" | "toggleHalo"
         | "configureApi" | "annotate" | "document" | "fix" | "rename" | "checkPaths" | "checkProjectPaths"
         | "commit" | "gitInit" | "publish" | "openRemote" | "openScm" | "settings"
         | "haloBrowse" | "haloWorkspace" | "haloSave" | "haloClear" | "assistantClear" | "prompt" | "projectContext" | "refreshExtensions";
@@ -143,6 +143,12 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
         return update("hoverExplain", !c.hoverExplain);
       case "toggleProjectContext":
         return update("projectContext", !c.projectContext);
+      case "toggleLiveRename":
+        return update("liveRename", !c.liveRename);
+      case "toggleBem":
+        return update("bem", !c.bem);
+      case "bemApply":
+        return void vscode.commands.executeCommand("ghostcode.bem.apply");
       case "togglePathCheck":
         return update("pathCheck", !c.pathCheck);
       case "toggleHalo":
@@ -329,6 +335,8 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
       git: await this.git.status(),
       indentSize: c.indentSize,
       pathCheck: c.pathCheck,
+      liveRename: c.liveRename,
+      bem: c.bem,
       pathIssues: this.services.paths.issueCount,
       brokenShown: this.brokenShown,
       brokenBusy: this.brokenBusy,

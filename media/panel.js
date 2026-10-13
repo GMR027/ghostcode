@@ -313,6 +313,9 @@ function toolsSection(s) {
         ${option("pointer", "Explicar al pasar el puntero", "Funciones, clases, SQL y expresiones regulares", s.hoverExplain, "toggleHover")}
         ${option("layers", "Contexto del proyecto", s.projectContext ? indexed : "Desactivado", s.projectContext, "toggleProjectContext")}
         ${option("route", "Vigilar rutas al escribir", "Marca las rutas que no existen", s.pathCheck, "togglePathCheck")}
+        ${option("tag", "Renombrado en vivo", "Cambia una variable o clase CSS en todo el proyecto al renombrarla", s.liveRename, "toggleLiveRename")}
+        ${option("layers", "Activar metodología BEM", "Sugiere Bloque__Elemento--Modificador según las etiquetas hijas", s.bem, "toggleBem")}
+        ${s.bem ? tile("sparkle", "Aplicar BEM al elemento", "Pone clases solo a las etiquetas que no tienen", "bemApply") : ""}
       </div>
       ${model}`,
       ),

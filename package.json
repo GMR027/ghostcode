@@ -2,7 +2,7 @@
   "name": "ghostcode",
   "displayName": "GhostCode — Autocompletado IA",
   "description": "Autocompletado de código con IA (tipo Copilot) en local con Ollama o por API, más herramientas: documentar, arreglar errores, explicar código/SQL/regex y mensajes de commit.",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "publisher": "edgar",
   "author": {
     "name": "GMR027",
@@ -125,6 +125,10 @@
       {
         "command": "ghostcode.rename",
         "title": "GhostCode: Renombrar con IA"
+      },
+      {
+        "command": "ghostcode.bem.apply",
+        "title": "GhostCode: Aplicar BEM al elemento"
       },
       {
         "command": "ghostcode.checkPaths",
@@ -427,6 +431,21 @@
           "type": "boolean",
           "default": true,
           "description": "Marcar en Problemas las rutas (href, src, import, require, include, url()…) que no existen en el proyecto, con corrección rápida."
+        },
+        "ghostcode.liveRename": {
+          "type": "boolean",
+          "default": false,
+          "description": "Renombrado en vivo: al cambiar el nombre de una variable, función o clase (o de una clase CSS), se cambia en todos los lugares donde se usa, incluidos el marcado y las hojas de estilo."
+        },
+        "ghostcode.liveRename.useAI": {
+          "type": "boolean",
+          "default": true,
+          "description": "Dejar que la IA (local o API) decida las coincidencias dudosas del renombrado en vivo (cadenas de texto, propiedades de otros objetos)."
+        },
+        "ghostcode.bem": {
+          "type": "boolean",
+          "default": false,
+          "description": "Metodología BEM: sugiere nombres de clase Bloque__Elemento--Modificador leyendo las etiquetas hijas y su contenido. Nunca modifica una clase que el usuario ya escribió."
         },
         "ghostcode.halo.enabled": {
           "type": "boolean",

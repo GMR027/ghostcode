@@ -14,6 +14,8 @@ import { HaloService } from "./halo";
 import { GhostCodePanel } from "./panel";
 import { PathChecker } from "./pathCheck";
 import { copyPrompt, createProjectContext, promptFromSelection, savePrompt } from "./promptTools";
+import { applyBem, BEM_LANGUAGES, BemCompletions } from "./bem";
+import { LiveRename } from "./liveRename";
 import { renameWithAI } from "./rename";
 import { WorkspaceFiles } from "./workspaceFiles";
 import { ProjectIndex } from "./projectIndex";
@@ -38,6 +40,7 @@ export function activate(context: vscode.ExtensionContext) {
   const git = new GitInfo();
   const paths = new PathChecker(files, project);
   const panel = new GhostCodePanel(context, () => backend?.label, () => lastMode, { git, project, halo, paths, files });
+  const liveRename = new LiveRename(context.secrets, toolMode, log);
   const hover = new ExplainHoverProvider(context.secrets, toolMode, log, project);
   const hasGit = async () => (await git.status()).status === "repo";
 
@@ -69,6 +72,9 @@ export function activate(context: vscode.ExtensionContext) {
     halo,
     paths,
     git,
+    liveRename,
+    vscode.languages.registerCompletionItemProvider(BEM_LANGUAGES, new BemCompletions(), ...BemCompletions.triggers),
+    vscode.commands.registerCommand("ghostcode.bem.apply", () => applyBem(context.secrets, toolMode(), log)),
     vscode.languages.registerInlineCompletionItemProvider({ pattern: "**" }, provider),
     vscode.window.registerWebviewViewProvider(GhostCodePanel.viewId, panel),
     vscode.languages.registerHoverProvider({ pattern: "**" }, hover),

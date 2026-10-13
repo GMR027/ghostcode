@@ -37,6 +37,8 @@ Todas están en el panel de GhostCode (icono del fantasma en la barra lateral), 
 | | **Explicar al pasar el puntero** | Al pasar el ratón sobre una función, clase, consulta **SQL** o **expresión regular**, muestra qué hace (y avisa si un SQL es vulnerable a inyección). El botón **Ir a función** abre el archivo donde está definida. |
 | **IA** | **Halo IA** | Analiza una carpeta o un repositorio tuyo y aprende cómo escribes (estilo, nombres, hábitos). Un indicador (halo) pasa de gris a un anillo animado mientras analiza y a verde cuando está listo. Mientras VS Code esté abierto, el autocompletado y las herramientas imitan tu estilo. **Guardar temporal** conserva el análisis al cerrar y reabrir VS Code (sin volver a meter las carpetas) hasta que pulses **Limpiar**. |
 | | **Asistente** | Pega unas líneas de código y te explica qué hace, detecta errores y señala fallas de seguridad, con tu modelo local o tu API. |
+| | **Renombrado en vivo** | Al cambiar el nombre de una variable, función o clase (o una clase CSS), lo cambia en todos los lugares donde se usa: el archivo, el marcado, las hojas de estilo (CSS/SCSS/Sass/Less) y el JavaScript (`querySelector`, `classList`). Si otras páginas usan la clase, te pregunta antes. Incluye «Deshacer». La IA decide las coincidencias dudosas. |
+| | **Metodología BEM** | Sugiere clases `bloque__elemento--modificador` leyendo las etiquetas hijas y su contenido, y el comando **Aplicar BEM al elemento** rellena solo las etiquetas sin clase. Nunca modifica una clase que ya escribiste. |
 | | **Prompt** | Convierte el código seleccionado en un prompt reutilizable para otro proyecto: **Copiar** o **Crear md-prompt** (lo guarda en `PROMPTS.md`). **Prompt y contexto del proyecto** crea `PROJECT-CONTEXT.md`: de qué trata, objetivo, lenguajes, estructura, frontend y backend. |
 | **Proyecto** | **Conexión GitHub** | Repositorio, rama, cambios y remoto; si no hay repositorio, lo indica. **Generar mensaje de commit** escribe el mensaje a partir de tus cambios. |
 | | **Extensiones recomendadas** | Según los lenguajes y herramientas del proyecto, con botón para instalarlas. En VSCodium (que usa Open VSX) algunas de Microsoft, como Pylance o C# Dev Kit, pueden no estar disponibles: el botón avisa y puedes buscarlas con **Ver**. |
@@ -67,11 +69,11 @@ Los instaladores están en la carpeta [`releases/`](releases/) de este repositor
 
 ### Opción 1 — Debian, Ubuntu, Linux Mint, Zorin OS, Pop!_OS… (recomendada)
 
-1. Descarga [`ghostcode_0.8.1_all.deb`](releases/ghostcode_0.8.1_all.deb) (botón **Download raw file**).
+1. Descarga [`ghostcode_0.9.0_all.deb`](releases/ghostcode_0.9.0_all.deb) (botón **Download raw file**).
 2. Instálalo (añade la extensión a tu VS Code y el comando `ghostcode-setup`):
 
    ```bash
-   sudo apt install ./ghostcode_0.8.1_all.deb
+   sudo apt install ./ghostcode_0.9.0_all.deb
    ```
 
 3. Con tu usuario (sin `sudo`), configura el modo:
@@ -96,12 +98,12 @@ Para desinstalar: `sudo apt remove ghostcode` (Ollama y los modelos se conservan
 
 ### Opción 2 — Cualquier sistema (Windows, macOS u otras distribuciones Linux)
 
-1. Descarga [`ghostcode-0.8.1.vsix`](releases/ghostcode-0.8.1.vsix).
+1. Descarga [`ghostcode-0.9.0.vsix`](releases/ghostcode-0.9.0.vsix).
 2. Instálalo en tu editor: menú **Extensiones** → `···` → **Instalar desde VSIX…**, o en una terminal (el mismo `.vsix` sirve para los dos):
 
    ```bash
-   code --install-extension ghostcode-0.8.1.vsix      # VS Code
-   codium --install-extension ghostcode-0.8.1.vsix    # VSCodium
+   code --install-extension ghostcode-0.9.0.vsix      # VS Code
+   codium --install-extension ghostcode-0.9.0.vsix    # VSCodium
    ```
 
 3. Para el modo Local, instala [Ollama](https://ollama.com/download) y descarga los modelos:
@@ -111,8 +113,8 @@ Para desinstalar: `sudo apt remove ghostcode` (Ollama y los modelos se conservan
    ollama pull qwen2.5-coder:3b          # herramientas (documentar, arreglar, explicar…)
    ```
 
-En otras distribuciones Linux también puedes usar [`ghostcode-0.8.1-linux.tar.gz`](releases/ghostcode-0.8.1-linux.tar.gz),
-que trae el mismo instalador: `tar xzf ghostcode-0.8.1-linux.tar.gz && cd ghostcode && ./install.sh`.
+En otras distribuciones Linux también puedes usar [`ghostcode-0.9.0-linux.tar.gz`](releases/ghostcode-0.9.0-linux.tar.gz),
+que trae el mismo instalador: `tar xzf ghostcode-0.9.0-linux.tar.gz && cd ghostcode && ./install.sh`.
 
 ### Opción 3 — Desde el código fuente
 
