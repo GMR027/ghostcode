@@ -2,7 +2,7 @@
   "name": "ghostcode",
   "displayName": "GhostCode — Autocompletado IA",
   "description": "Autocompletado de código con IA (tipo Copilot) en local con Ollama o por API, más herramientas: documentar, arreglar errores, explicar código/SQL/regex y mensajes de commit.",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "publisher": "edgar",
   "author": {
     "name": "GMR027",

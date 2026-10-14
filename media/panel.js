@@ -12,6 +12,11 @@ window.addEventListener("message", (e) => {
   if (e.data?.type === "state") {
     state = e.data.state;
     render();
+  } else if (e.data?.type === "tab" && TABS.some((t) => t.id === e.data.tab)) {
+    // Otra extensión (Code Learning) pide ver una pestaña concreta.
+    saved.tab = e.data.tab;
+    vscode.setState(saved);
+    render();
   }
 });
 
@@ -376,6 +381,15 @@ function haloSection(s) {
           <button class="icon-btn" data-action="haloRemove" data-id="${esc(h.id)}" title="Quitar de la caché" aria-label="Quitar ${esc(h.name)}">${icon("close")}</button>
         </div>
         <span class="meta"><span>${h.files} archivos · ${h.functions} funciones${h.cloned ? " · repositorio clonado" : ""}</span></span>
+        ${
+          h.project
+            ? `<div class="linked">
+          <span class="chip linked-chip">Conectado con Code Learning</span>
+          <span class="muted">${esc(h.project.type)} · avance ${h.project.progress.overall}%</span>
+          <div class="tags">${h.project.topics.map((t) => `<span class="chip plain">${esc(t.name)}</span>`).join("")}</div>
+        </div>`
+            : ""
+        }
         <div class="tags">${h.tags.map((t) => `<span class="chip plain">${esc(t)}</span>`).join("")}</div>
         ${
           h.summary

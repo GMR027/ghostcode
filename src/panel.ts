@@ -114,6 +114,13 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
     view.onDidDispose(() => (this.view = undefined));
   }
 
+  /** Abre el panel de GhostCode y lo deja en la pestaña «IA» (donde está Halo IA). */
+  async revealHalo(): Promise<void> {
+    await vscode.commands.executeCommand("workbench.view.extension.ghostcode");
+    await this.post();
+    await this.view?.webview.postMessage({ type: "tab", tab: "ai" });
+  }
+
   /** Vuelve a enviar el estado (cambió la configuración o el backend). */
   refresh(): void {
     void this.post();
@@ -345,7 +352,7 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
       haloEnabled: c.haloEnabled,
       haloStatus: this.services.halo.busy ? "working" : this.services.halo.list().length ? "ready" : "idle",
       haloPersisted: this.services.halo.isPersisted,
-      halo: this.services.halo.list().map((h) => ({ id: h.id, name: h.name, input: h.input, files: h.files, functions: h.functions, tags: h.styleTags, summary: h.summary, cloned: h.cloned })),
+      halo: this.services.halo.list().map((h) => ({ id: h.id, name: h.name, input: h.input, files: h.files, functions: h.functions, tags: h.styleTags, summary: h.summary, cloned: h.cloned, project: h.project })),
       assistant: this.assistant?.text,
       assistantBusy: this.assistantBusy,
       prompt: this.prompt,

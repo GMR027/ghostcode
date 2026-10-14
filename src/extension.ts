@@ -118,6 +118,10 @@ export function activate(context: vscode.ExtensionContext) {
         }));
       if (value) return halo.analyze(value);
     }),
+    // Code Learning comparte aquí el proyecto que analizó; «reveal» abre el panel en la pestaña de Halo IA.
+    vscode.commands.registerCommand("ghostcode.halo.connectProject", (root: string, info: unknown) => halo.connectProject(root, info).then((s) => !!s)),
+    vscode.commands.registerCommand("ghostcode.halo.disconnectProject", () => halo.disconnectProject()),
+    vscode.commands.registerCommand("ghostcode.halo.reveal", () => panel.revealHalo()),
     vscode.commands.registerCommand("ghostcode.prompt.fromSelection", async () => {
       const p = await promptFromSelection(context.secrets, toolMode(), log);
       if (p) {

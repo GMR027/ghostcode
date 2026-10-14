@@ -622,3 +622,9 @@ details.learned .tiles { margin-top: 6px; }
 .assistant-reply ul { padding-left: 18px; }
 .assistant-reply pre.code { margin: 6px 0; padding: 8px; overflow-x: auto; border-radius: 6px; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); white-space: pre; }
 #assistantInput { font-family: var(--vscode-editor-font-family); }
+
+/* Proyecto compartido por Code Learning */
+.linked { display: flex; flex-direction: column; gap: 5px; padding: 8px 9px; border-radius: var(--radius); border: 1px solid color-mix(in oklab, var(--ok) 45%, transparent); background: color-mix(in oklab, var(--ok) 7%, var(--card)); box-shadow: 0 0 10px color-mix(in oklab, var(--ok) 25%, transparent); animation: linkedIn 0.6s ease-out; }
+.linked-chip { color: var(--ok); }
+.linked-chip::before { background: var(--ok); }
+@keyframes linkedIn { from { box-shadow: 0 0 0 color-mix(in oklab, var(--ok) 0%, transparent); opacity: 0.4; } to { opacity: 1; } }
