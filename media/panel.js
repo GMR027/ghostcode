@@ -385,7 +385,7 @@ function haloSection(s) {
           h.project
             ? `<div class="linked">
           <span class="chip linked-chip">Conectado con Code Learning</span>
-          <span class="muted">${esc(h.project.type)} · avance ${h.project.progress.overall}%</span>
+          <span class="muted">Avance ${h.project.progress.overall}%</span>
           <div class="tags">${h.project.topics.map((t) => `<span class="chip plain">${esc(t.name)}</span>`).join("")}</div>
         </div>`
             : ""
