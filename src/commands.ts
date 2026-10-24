@@ -1,10 +1,12 @@
 import * as vscode from "vscode";
 import { ANTHROPIC_MODELS } from "./backends/anthropic";
 import { CODESTRAL_DEFAULT_URL } from "./backends/codestral";
+import { listOpencodeModels } from "./backends/opencode";
 import { OllamaBackend } from "./backends/ollama";
+import { modelKind, type ModelKind } from "./core/opencode";
 import {
   cfg, defaultApiModel, deleteApiKey, getApiKey, PROVIDER_LABELS, setApiKey, update,
-  type ApiProvider,
+  usesOwnCredentials, type ApiProvider,
 } from "./config";
 
 interface Pick<T> extends vscode.QuickPickItem {
@@ -75,7 +77,8 @@ export async function enableApiMode(secrets: vscode.SecretStorage): Promise<void
   const c = cfg();
   const hasKey = await getApiKey(secrets, c.apiProvider);
   const needsModel = c.apiProvider === "openai-compatible" && !c.apiModel;
-  if ((!hasKey && c.apiProvider !== "openai-compatible") || needsModel) {
+  const needsKey = c.apiProvider !== "openai-compatible" && !usesOwnCredentials(c.apiProvider);
+  if ((!hasKey && needsKey) || needsModel) {
     if (!(await configureApi(secrets))) return;
   }
   await update("mode", "api");
@@ -179,6 +182,11 @@ export async function configureApi(secrets: vscode.SecretStorage): Promise<boole
       detail: "OpenAI, DeepSeek, OpenRouter, Groq, Together, LM Studio, vLLM, llama.cpp…",
       value: "openai-compatible",
     },
+    {
+      label: "OpenCode",
+      detail: "Modelos gratis o de tu suscripción (OpenCode Go), con tu sesión de «opencode auth login»",
+      value: "opencode",
+    },
   ];
   for (const p of providers) if (p.value === c.apiProvider) p.description = "● actual";
   const prov = await vscode.window.showQuickPick(providers, { title: "GhostCode — proveedor API (1/3)" });
@@ -217,6 +225,8 @@ export async function configureApi(secrets: vscode.SecretStorage): Promise<boole
     const pick = await vscode.window.showQuickPick(items, { title: "GhostCode — modelo de Claude (3/3)" });
     if (!pick) return false;
     model = pick.value === "__other__" ? await vscode.window.showInputBox({ title: "ID del modelo", value: current }) : pick.value;
+  } else if (provider === "opencode") {
+    model = await pickOpencodeModel(current);
   } else {
     model = await vscode.window.showInputBox({
       title: "GhostCode — modelo (3/3)",
@@ -228,19 +238,54 @@ export async function configureApi(secrets: vscode.SecretStorage): Promise<boole
       ignoreFocusOut: true,
     });
   }
-  if (!model) return false;
+  if (model === undefined || (!model && provider !== "opencode")) return false;
 
   await update("api.provider", provider);
   await update("api.baseUrl", baseUrl);
   await update("api.model", model);
 
-  if (!(await secrets.get(`ghostcode.apiKey.${provider}`))) {
+  if (!usesOwnCredentials(provider) && !(await secrets.get(`ghostcode.apiKey.${provider}`))) {
     const optional = provider === "openai-compatible";
     const key = await askApiKey(provider, optional);
     if (key === undefined && !optional && !(await getApiKey(secrets, provider))) return false;
     if (key) await setApiKey(secrets, provider, key);
   }
   return true;
+}
+
+const OPENCODE_GROUPS: Record<ModelKind, string> = {
+  free: "Gratis",
+  subscription: "Suscripción OpenCode Go",
+  other: "Otros modelos de tu cuenta",
+};
+
+/** Modelos de OpenCode agrupados por tipo de acceso. "" = el predeterminado de OpenCode. */
+async function pickOpencodeModel(current: string): Promise<string | undefined> {
+  const input = () =>
+    vscode.window.showInputBox({
+      title: "GhostCode — modelo de OpenCode (3/3)",
+      value: current,
+      prompt: "Formato proveedor/modelo, p. ej. opencode-go/claude-haiku-5-5. Vacío = el predeterminado de OpenCode.",
+      ignoreFocusOut: true,
+    });
+  const models = await listOpencodeModels();
+  if (models.length === 0) {
+    void vscode.window.showWarningMessage("GhostCode: no encuentro OpenCode. Instálalo desde opencode.ai y ejecuta «opencode auth login».");
+    return input();
+  }
+  const items: Pick<string>[] = [
+    { label: "Predeterminado de OpenCode", detail: "El que tenga configurado OpenCode", value: "", description: current ? undefined : "● actual" },
+  ];
+  for (const kind of ["free", "subscription", "other"] as const) {
+    const group = models.filter((m) => modelKind(m) === kind);
+    if (group.length === 0) continue;
+    items.push({ label: OPENCODE_GROUPS[kind], kind: vscode.QuickPickItemKind.Separator, value: "" });
+    items.push(...group.map((m) => ({ label: m, value: m, description: m === current ? "● actual" : undefined })));
+  }
+  items.push({ label: "$(edit) Otro modelo…", value: "__other__" });
+  const pick = await vscode.window.showQuickPick(items, { title: "GhostCode — modelo de OpenCode (3/3)", ignoreFocusOut: true });
+  if (!pick) return undefined;
+  return pick.value === "__other__" ? input() : pick.value;
 }
 
 async function askApiKey(provider: ApiProvider, optional: boolean): Promise<string | undefined> {
@@ -254,6 +299,10 @@ async function askApiKey(provider: ApiProvider, optional: boolean): Promise<stri
 }
 
 export async function setApiKeyCommand(secrets: vscode.SecretStorage): Promise<void> {
+  if (usesOwnCredentials(cfg().apiProvider)) {
+    void vscode.window.showInformationMessage("GhostCode: OpenCode usa su propia sesión. Ejecuta «opencode auth login» en una terminal.");
+    return;
+  }
   const key = await askApiKey(cfg().apiProvider, false);
   if (!key) return;
   await setApiKey(secrets, cfg().apiProvider, key);

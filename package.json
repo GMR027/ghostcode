@@ -332,12 +332,14 @@
           "enum": [
             "anthropic",
             "codestral",
-            "openai-compatible"
+            "openai-compatible",
+            "opencode"
           ],
           "enumDescriptions": [
             "Anthropic Claude",
             "Mistral Codestral (FIM nativo, especializado en código)",
-            "Cualquier API compatible con OpenAI: OpenAI, DeepSeek, OpenRouter, Groq, LM Studio, vLLM, llama.cpp..."
+            "Cualquier API compatible con OpenAI: OpenAI, DeepSeek, OpenRouter, Groq, LM Studio, vLLM, llama.cpp...",
+            "OpenCode: modelos gratis o de tu suscripción (OpenCode Go), con tu sesión de «opencode auth login»"
           ],
           "default": "anthropic",
           "description": "Proveedor usado en modo API."
@@ -345,7 +347,7 @@
         "ghostcode.api.model": {
           "type": "string",
           "default": "",
-          "description": "Modelo del proveedor API. Vacío = el recomendado del proveedor."
+          "description": "Modelo del proveedor API. Vacío = el recomendado del proveedor. Con OpenCode: proveedor/modelo (p. ej. opencode-go/claude-haiku-5-5); vacío = el predeterminado de OpenCode."
         },
         "ghostcode.api.baseUrl": {
           "type": "string",

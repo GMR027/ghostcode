@@ -3,22 +3,28 @@ import { ANTHROPIC_DEFAULT_MODEL, AnthropicBackend } from "./backends/anthropic"
 import { CODESTRAL_DEFAULT_MODEL, CODESTRAL_DEFAULT_URL, CodestralBackend } from "./backends/codestral";
 import { OllamaBackend } from "./backends/ollama";
 import { OPENAI_DEFAULT_URL, OpenAICompatBackend } from "./backends/openaiCompat";
+import { OpencodeBackend } from "./backends/opencode";
 import { BackendError, type Backend } from "./core/types";
 
 export type Mode = "local" | "api" | "off";
-export type ApiProvider = "anthropic" | "codestral" | "openai-compatible";
+export type ApiProvider = "anthropic" | "codestral" | "openai-compatible" | "opencode";
 
 export const PROVIDER_LABELS: Record<ApiProvider, string> = {
   anthropic: "Anthropic Claude",
   codestral: "Mistral Codestral",
   "openai-compatible": "Compatible con OpenAI",
+  opencode: "OpenCode",
 };
 
 const ENV_KEYS: Record<ApiProvider, string[]> = {
   anthropic: ["ANTHROPIC_API_KEY"],
   codestral: ["CODESTRAL_API_KEY", "MISTRAL_API_KEY"],
   "openai-compatible": ["OPENAI_API_KEY"],
+  opencode: [],
 };
+
+/** OpenCode guarda sus propias credenciales (`opencode auth login`): la extensión no pide API key. */
+export const usesOwnCredentials = (p: ApiProvider) => p === "opencode";
 
 export function cfg() {
   const c = vscode.workspace.getConfiguration("ghostcode");
@@ -91,5 +97,7 @@ export async function createBackend(secrets: vscode.SecretStorage, mode = cfg().
       return new CodestralBackend(key, model, c.apiBaseUrl || CODESTRAL_DEFAULT_URL);
     case "openai-compatible":
       return new OpenAICompatBackend(key, model, c.apiBaseUrl || OPENAI_DEFAULT_URL, c.apiUseFim);
+    case "opencode":
+      return new OpencodeBackend(model);
   }
 }

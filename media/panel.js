@@ -214,7 +214,7 @@ function render() {
 function header(s) {
   const status = s.enabled ? (s.ollamaError && s.mode === "local" ? "warn" : "on") : "off";
   const statusText = { on: "Activo", off: "En pausa", warn: "Sin conexión con Ollama" }[status];
-  const detail = s.enabled ? s.backendLabel.replace(/^(Local|API|Claude|Codestral) · /, "") : "El autocompletado está desactivado";
+  const detail = s.enabled ? s.backendLabel.replace(/^(Local|API|Claude|Codestral|OpenCode) · /, "") : "El autocompletado está desactivado";
   const modes = [
     ["local", "cpu", "Local", "En tu equipo"],
     ["api", "cloud", "API", "En la nube"],
