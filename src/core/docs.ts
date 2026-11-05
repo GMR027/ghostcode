@@ -16,7 +16,16 @@ export function buildQuery(...parts: (string | undefined)[]): string {
 
 /** Añade la documentación al prompt: las fuentes al mensaje del usuario y el aviso de seguridad al de sistema. */
 export function mergeDocs(req: ChatRequest, ctx: DocsContext): ChatRequest {
-  return { ...req, system: `${req.system}\n${ctx.note}`, user: `${req.user}\n\n${ctx.text}` };
+  // Con historial, la documentación va pegada al último mensaje del usuario.
+  const messages = req.messages?.map((m, i, all) =>
+    i === all.length - 1 && m.role === "user" ? { ...m, content: `${m.content}\n\n${ctx.text}` } : m,
+  );
+  return {
+    ...req,
+    system: `${req.system}\n${ctx.note}`,
+    user: `${req.user}\n\n${ctx.text}`,
+    ...(messages ? { messages } : {}),
+  };
 }
 
 /** Pie con las fuentes usadas, para que el usuario vea de dónde salió la ayuda. */

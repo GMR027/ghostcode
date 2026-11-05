@@ -13,6 +13,20 @@ test("mergeDocs añade las fuentes al mensaje del usuario y el aviso al de siste
   assert.equal(req.user, "Explica este código", "no modifica el original");
 });
 
+test("mergeDocs con historial añade la documentación al último mensaje del usuario", () => {
+  const messages = [
+    { role: "user" as const, content: "Hola" },
+    { role: "assistant" as const, content: "¿Qué código?" },
+    { role: "user" as const, content: "Mira esto" },
+  ];
+  const out = mergeDocs({ system: "s", user: "Mira esto", maxTokens: 10, temperature: 0, messages }, ctx);
+  assert.equal(out.messages?.length, 3);
+  assert.equal(out.messages?.[0].content, "Hola");
+  assert.equal(out.messages?.[1].content, "¿Qué código?");
+  assert.ok(out.messages?.[2].content.startsWith("Mira esto") && out.messages[2].content.endsWith("</docs>"));
+  assert.equal(messages[2].content, "Mira esto", "no modifica el original");
+});
+
 test("buildQuery junta, limpia y recorta", () => {
   assert.equal(buildQuery("  a\n\nb ", undefined, "c"), "a b c");
   assert.equal(buildQuery("x".repeat(5000)).length, 1500);

@@ -49,7 +49,7 @@ export class CodestralBackend implements Backend {
         model: this.model,
         messages: [
           { role: "system", content: req.system },
-          { role: "user", content: req.user },
+          ...(req.messages?.length ? req.messages : [{ role: "user", content: req.user }]),
         ],
         max_tokens: req.maxTokens,
         temperature: req.temperature,

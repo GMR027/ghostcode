@@ -5,7 +5,7 @@ import { after, before, test } from "node:test";
 import { CodestralBackend } from "../src/backends/codestral";
 import { OllamaBackend } from "../src/backends/ollama";
 import { OpenAICompatBackend } from "../src/backends/openaiCompat";
-import { BackendError, type Backend, type ChatRequest, type CompletionRequest } from "../src/core/types";
+import { BackendError, type Backend, type ChatMessage, type ChatRequest, type CompletionRequest } from "../src/core/types";
 
 const requests: { url: string; body: any; auth?: string }[] = [];
 let base = "";
@@ -59,6 +59,13 @@ const req: CompletionRequest = {
 async function collect(b: Backend): Promise<string> {
   let out = "";
   for await (const p of b.complete(req, new AbortController().signal)) out += p;
+  return out;
+}
+
+async function collectChatHistory(b: Backend, messages: ChatMessage[]): Promise<string> {
+  const chat: ChatRequest = { system: "sys", user: "nuevo", maxTokens: 32, temperature: 0, messages };
+  let out = "";
+  for await (const p of b.chat(chat, new AbortController().signal)) out += p;
   return out;
 }
 
@@ -123,4 +130,20 @@ test("chat: OpenAI-compatible y Codestral usan /chat/completions", async () => {
   assert.equal(requests.at(-1)!.body.max_tokens, 100);
   assert.equal(await collectChat(new CodestralBackend("KEY", "codestral-latest", `${base}/v1`)), "chat ok");
   assert.equal(requests.at(-1)!.auth, "Bearer KEY");
+});
+
+test("chat: los backends envían el historial completo de la conversación", async () => {
+  const history: ChatMessage[] = [
+    { role: "user", content: "¿Qué hace?" },
+    { role: "assistant", content: "Suma dos números." },
+    { role: "user", content: "¿Dónde falla?" },
+  ];
+  await collectChatHistory(new OllamaBackend(base, "qwen"), history);
+  assert.deepEqual(requests.at(-1)!.body.messages, [{ role: "system", content: "sys" }, ...history]);
+
+  await collectChatHistory(new OpenAICompatBackend("K", "m", `${base}/v1`, false), history);
+  assert.deepEqual(requests.at(-1)!.body.messages, [{ role: "system", content: "sys" }, ...history]);
+
+  await collectChatHistory(new CodestralBackend("KEY", "m", `${base}/v1`), history);
+  assert.deepEqual(requests.at(-1)!.body.messages, [{ role: "system", content: "sys" }, ...history]);
 });

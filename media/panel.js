@@ -17,6 +17,14 @@ window.addEventListener("message", (e) => {
     saved.tab = e.data.tab;
     vscode.setState(saved);
     render();
+  } else if (e.data?.type === "chatInsert" && typeof e.data.text === "string") {
+    // «Usar selección»: se añade al mensaje que el usuario esté escribiendo.
+    const el = /** @type {HTMLTextAreaElement | null} */ (document.getElementById("chatInput"));
+    if (el) {
+      el.value = el.value.trim() ? `${el.value.trimEnd()}\n\n${e.data.text}` : e.data.text;
+      drafts.chatInput = el.value;
+      el.focus();
+    }
   }
 });
 
@@ -33,10 +41,27 @@ app.addEventListener("click", (e) => {
     return;
   }
   const { action, with: withId, ...data } = el.dataset;
+  // El chat envía el mensaje y vacía el campo para poder escribir el siguiente.
+  if (action === "chatSend") {
+    sendChat();
+    return;
+  }
   // Botones que envían el valor de un campo (p. ej. «Analizar» con la ruta escrita).
   if (withId) data.value = /** @type {HTMLInputElement} */ (document.getElementById(withId))?.value ?? "";
   vscode.postMessage({ type: action, ...data });
 });
+
+/** Envía el mensaje escrito en el chat y limpia el campo (también su borrador guardado). */
+function sendChat() {
+  const input = /** @type {HTMLTextAreaElement | null} */ (document.getElementById("chatInput"));
+  if (!input || !input.value.trim()) return false;
+  const send = /** @type {HTMLButtonElement | null} */ (document.querySelector('[data-action="chatSend"]'));
+  if (send?.disabled) return false;
+  vscode.postMessage({ type: "chatSend", value: input.value });
+  input.value = "";
+  drafts.chatInput = "";
+  return true;
+}
 
 /** Lo escrito en los campos: se conserva aunque el panel se vuelva a pintar. */
 /** @type {Record<string, string>} */
@@ -49,6 +74,8 @@ app.addEventListener("keydown", (e) => {
   // Enter en el campo de Halo IA = Analizar.
   const el = /** @type {HTMLInputElement} */ (e.target);
   if (e.key === "Enter" && el.id === "haloInput" && el.value.trim()) vscode.postMessage({ type: "haloAnalyze", value: el.value });
+  // Enter en el chat = enviar; Shift+Enter = salto de línea.
+  if (e.key === "Enter" && !e.shiftKey && el.id === "chatInput" && sendChat()) e.preventDefault();
 });
 
 app.addEventListener("change", (e) => {
@@ -80,6 +107,7 @@ const PATHS = {
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L12 16.9l-5.25 2.7 1-5.8L3.5 9.7l5.9-.9z"/>',
   indent: '<path d="M3 5h18M10 10h11M10 14h11M3 19h18M3 9.5l3 2.5-3 2.5"/>',
+  vertical: '<path d="M4 5v14M9 7h11M9 12h11M9 17h7"/>',
   comment: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
   pointer: '<path d="M5 3l14 7-6 2-2 6z"/><path d="M13 12l5 5"/>',
   book: '<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20M8 7h8M8 10.5h5"/>',
@@ -193,7 +221,7 @@ function render() {
   const focus = focused?.id ? { id: focused.id, start: focused.selectionStart, end: focused.selectionEnd } : undefined;
   const content = {
     tools: () => toolsSection(s),
-    ai: () => haloSection(s) + assistantSection(s) + promptSection(s),
+    ai: () => haloSection(s) + chatSection(s) + promptSection(s),
     project: () => gitSection(s) + extensionsSection(s),
     models: () => modelsSection(s),
   }[current()]();
@@ -208,6 +236,9 @@ function render() {
     el?.focus();
     if (el && focus.start !== null) el.setSelectionRange(focus.start, focus.end);
   }
+  // El chat siempre muestra el último mensaje.
+  const log = /** @type {HTMLElement | null} */ (document.getElementById("chatLog"));
+  if (log) log.scrollTop = log.scrollHeight;
 }
 
 // --- Cabecera: estado + modo -------------------------------------------------------
@@ -310,6 +341,7 @@ function toolsSection(s) {
             <button class="btn ghost" data-action="indent" data-with="indentSpaces">${icon("indent")}Corregir</button>
           </div>
         </div>
+        ${tile("vertical", "Atributos en vertical", "Un atributo por línea en la selección o el archivo", "verticalAttrs")}
       </div>`,
       ) +
       group(
@@ -470,19 +502,37 @@ function mdLite(text) {
   return html;
 }
 
-function assistantSection(s) {
+function chatSection(s) {
+  const chat = s.chat ?? [];
+  const bubble = (m) =>
+    m.role === "user"
+      ? `<div class="chat-msg user"><div class="bubble">${esc(m.content)}</div></div>`
+      : `<div class="chat-msg bot"><span class="chat-avatar" aria-hidden="true">${icon("ghost")}</span><div class="bubble">${mdLite(m.content)}</div></div>`;
+  const typing = `<div class="chat-msg bot">
+      <span class="chat-avatar" aria-hidden="true">${icon("ghost")}</span>
+      <div class="bubble"><span class="chat-typing" role="status" aria-label="GhostCode está pensando"><span></span><span></span><span></span></span></div>
+    </div>`;
+  const empty = `<div class="chat-msg bot">
+      <span class="chat-avatar" aria-hidden="true">${icon("ghost")}</span>
+      <div class="bubble"><p>Pega un extracto de código o pregunta lo que necesites: qué hace, por qué falla, dónde está el error o cómo refactorizarlo.</p></div>
+    </div>`;
   return section(
     "assistant",
-    "sparkle",
+    "ghost",
     "Asistente",
-    "Pega código y te explica qué hace, detecta errores y fallas de seguridad",
-    `<label class="field"><span>Código a revisar</span>
-      <textarea id="assistantInput" rows="8" spellcheck="false" placeholder="Pega aquí las líneas de código…"></textarea></label>
-    <div class="row-btns">
-      <button class="btn" data-action="assistantAsk" data-with="assistantInput" ${s.assistantBusy ? "disabled" : ""}>${icon("sparkle")}${s.assistantBusy ? "Revisando…" : "Explicar y revisar"}</button>
-      ${s.assistant ? `<button class="btn ghost" data-action="assistantClear">${icon("close")}Limpiar respuesta</button>` : ""}
+    "Pregunta por tu código: funcionamiento, errores, dónde está el fallo, mejoras y refactorización",
+    `<div class="chat-log" id="chatLog" role="log" aria-label="Conversación con el asistente">
+      ${chat.length ? chat.map(bubble).join("") : empty}
+      ${s.chatBusy ? typing : ""}
     </div>
-    ${s.assistant ? `<div class="assistant-reply">${mdLite(s.assistant)}</div>` : `<p class="muted">Usa el modelo local o la API que tengas activos en GhostCode.</p>`}`,
+    <label class="field"><span>Mensaje</span>
+      <textarea id="chatInput" rows="4" spellcheck="false" placeholder="Pega código y pregunta… Por ejemplo: «¿Dónde está el error en este fragmento?»"></textarea></label>
+    <div class="row-btns">
+      <button class="btn" data-action="chatSend" ${s.chatBusy ? "disabled" : ""}>${icon("sparkle")}${s.chatBusy ? "Pensando…" : "Enviar"}</button>
+      <button class="btn ghost" data-action="chatSelection" title="Adjuntar el código seleccionado en el editor">${icon("file")}Usar selección</button>
+      ${chat.length ? `<button class="btn ghost" data-action="chatClear" ${s.chatBusy ? "disabled" : ""}>${icon("close")}Limpiar chat</button>` : ""}
+    </div>
+    <p class="muted chat-hint">Enter envía · Shift+Enter salto de línea · también puedes copiar y pegar extractos.</p>`,
   );
 }
 

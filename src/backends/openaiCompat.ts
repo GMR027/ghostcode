@@ -1,5 +1,5 @@
 import { buildFimPrompt, chatSystemPrompt, chatUserPrompt } from "../core/prompt";
-import { BackendError, type Backend, type ChatRequest, type CompletionRequest } from "../core/types";
+import { BackendError, type Backend, type ChatMessage, type ChatRequest, type CompletionRequest } from "../core/types";
 import { joinUrl, postJson, readSse } from "./http";
 
 export const OPENAI_DEFAULT_URL = "https://api.openai.com/v1";
@@ -56,7 +56,7 @@ export class OpenAICompatBackend implements Backend {
 
   async *chat(req: ChatRequest, signal: AbortSignal): AsyncIterable<string> {
     this.requireModel();
-    yield* this.completeChat(req.system, req.user, req.maxTokens, signal);
+    yield* this.completeChat(req.system, req.user, req.maxTokens, signal, req.messages);
   }
 
   private requireModel(): void {
@@ -91,14 +91,20 @@ export class OpenAICompatBackend implements Backend {
     }
   }
 
-  private async *completeChat(system: string, user: string, maxTokens: number, signal: AbortSignal): AsyncIterable<string> {
+  private async *completeChat(
+    system: string,
+    user: string,
+    maxTokens: number,
+    signal: AbortSignal,
+    history?: ChatMessage[],
+  ): AsyncIterable<string> {
     const res = await postJson(
       joinUrl(this.baseUrl, "/chat/completions"),
       {
         model: this.model,
         messages: [
           { role: "system", content: system },
-          { role: "user", content: user },
+          ...(history?.length ? history : [{ role: "user", content: user }]),
         ],
         // OpenAI exige max_completion_tokens; el resto de servidores compatibles usa max_tokens.
         [/api\.openai\.com/.test(this.baseUrl) ? "max_completion_tokens" : "max_tokens"]: maxTokens,

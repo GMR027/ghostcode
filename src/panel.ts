@@ -3,6 +3,7 @@ import { OllamaBackend } from "./backends/ollama";
 import { enableApiMode, pullModel } from "./commands";
 import { cfg, defaultApiModel, PROVIDER_LABELS, update } from "./config";
 import { describeHardware, isCompletionOnly, pickChatModel, suggestModels } from "./core/models";
+import type { ChatMessage } from "./core/types";
 import type { GitInfo } from "./git";
 import type { HaloService } from "./halo";
 import { getHardware } from "./hardware";
@@ -25,13 +26,13 @@ type Msg =
   | {
       type:
         | "ready" | "refresh" | "toggle" | "toggleHover" | "toggleLiveRename" | "toggleBem" | "bemApply" | "toggleProjectContext" | "togglePathCheck" | "toggleHalo"
-        | "configureApi" | "annotate" | "document" | "fix" | "rename" | "checkPaths" | "checkProjectPaths"
+        | "configureApi" | "annotate" | "document" | "fix" | "rename" | "checkPaths" | "checkProjectPaths" | "verticalAttrs"
         | "commit" | "gitInit" | "publish" | "openRemote" | "openScm" | "settings"
-        | "haloBrowse" | "haloWorkspace" | "haloSave" | "haloClear" | "assistantClear" | "prompt" | "projectContext" | "refreshExtensions";
+        | "haloBrowse" | "haloWorkspace" | "haloSave" | "haloClear" | "chatClear" | "chatSelection" | "prompt" | "projectContext" | "refreshExtensions";
     }
   | { type: "indent"; spaces?: string }
   | { type: "indentSize"; value: string }
-  | { type: "haloAnalyze" | "assistantAsk"; value: string }
+  | { type: "haloAnalyze" | "chatSend"; value: string }
   | { type: "haloRemove"; id: string }
   | { type: "copyPrompt" | "savePrompt"; value: string }
   | { type: "installExt" | "showExt"; id: string }
@@ -90,9 +91,9 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
   /** Último prompt generado con «Prompt». */
   prompt?: GeneratedPrompt;
   private promptBusy = false;
-  /** Respuesta del Asistente a la última consulta. */
-  private assistant?: { code: string; text: string };
-  private assistantBusy = false;
+  /** Respuesta del chat del Asistente; se conserva mientras la sesión esté abierta. */
+  private chat: ChatMessage[] = [];
+  private chatBusy = false;
   /** «Mostrar rutas rotas»: la lista está desplegada en el panel. */
   private brokenShown = false;
   private brokenBusy = false;
@@ -170,6 +171,8 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
         return void vscode.commands.executeCommand("ghostcode.checkPaths");
       case "checkProjectPaths":
         return void vscode.commands.executeCommand("ghostcode.checkProjectPaths");
+      case "verticalAttrs":
+        return void vscode.commands.executeCommand("ghostcode.verticalAttributes");
       case "haloAnalyze":
         await this.services.halo.analyze(m.value);
         return;
@@ -190,22 +193,44 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
         return this.services.halo.clear();
       case "haloRemove":
         return this.services.halo.remove(m.id);
-      case "assistantAsk": {
-        if (this.assistantBusy) return;
-        this.assistantBusy = true;
+      case "chatSend": {
+        if (this.chatBusy) return;
+        const text = m.value.trim();
+        if (!text) return;
+        this.chat.push({ role: "user", content: text });
+        this.chatBusy = true;
         await this.post();
         try {
-          const text = await vscode.commands.executeCommand<string | undefined>("ghostcode.assistant.ask", m.value);
-          if (text) this.assistant = { code: m.value, text };
+          const reply = await vscode.commands.executeCommand<string | undefined>(
+            "ghostcode.chat.ask",
+            this.chat.slice(0, -1),
+            text,
+          );
+          this.chat.push(
+            reply
+              ? { role: "assistant", content: reply }
+              : { role: "assistant", content: "No pude obtener respuesta. Revisa el modelo o la conexión e inténtalo de nuevo." },
+          );
+        } catch (err) {
+          this.chat.push({ role: "assistant", content: `No pude responder: ${(err as Error).message}` });
         } finally {
-          this.assistantBusy = false;
+          this.chatBusy = false;
           await this.post();
         }
         return;
       }
-      case "assistantClear":
-        this.assistant = undefined;
-        return void this.post();
+      case "chatClear":
+        this.chat = [];
+        return this.post();
+      case "chatSelection": {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.selection.isEmpty) {
+          void vscode.window.showInformationMessage("GhostCode: selecciona en el editor el código que quieres usar en el chat.");
+          return;
+        }
+        await this.view?.webview.postMessage({ type: "chatInsert", text: editor.document.getText(editor.selection) });
+        return;
+      }
       case "prompt":
         this.promptBusy = true;
         await this.post();
@@ -309,8 +334,6 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
         return;
       case "configureApi":
         return void vscode.commands.executeCommand("ghostcode.configureApi");
-      case "indent":
-        return void vscode.commands.executeCommand("ghostcode.fixIndentation");
       case "annotate":
         return void vscode.commands.executeCommand("ghostcode.annotate");
       case "settings":
@@ -353,8 +376,8 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
       haloStatus: this.services.halo.busy ? "working" : this.services.halo.list().length ? "ready" : "idle",
       haloPersisted: this.services.halo.isPersisted,
       halo: this.services.halo.list().map((h) => ({ id: h.id, name: h.name, input: h.input, files: h.files, functions: h.functions, tags: h.styleTags, summary: h.summary, cloned: h.cloned, project: h.project })),
-      assistant: this.assistant?.text,
-      assistantBusy: this.assistantBusy,
+      chat: this.chat,
+      chatBusy: this.chatBusy,
       prompt: this.prompt,
       promptBusy: this.promptBusy,
       promptsFile: c.promptsFile,

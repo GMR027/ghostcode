@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { chatSystemPrompt, chatUserPrompt } from "../core/prompt";
-import { BackendError, type Backend, type ChatRequest, type CompletionRequest } from "../core/types";
+import { BackendError, type Backend, type ChatMessage, type ChatRequest, type CompletionRequest } from "../core/types";
 
 export const ANTHROPIC_DEFAULT_MODEL = "claude-opus-5";
 
@@ -54,15 +54,27 @@ export class AnthropicBackend implements Backend {
   }
 
   async *chat(req: ChatRequest, signal: AbortSignal): AsyncIterable<string> {
-    yield* this.stream(Math.max(2048, req.maxTokens * 4), req.system, req.user, signal);
+    yield* this.stream(
+      Math.max(2048, req.maxTokens * 4),
+      req.system,
+      req.user,
+      signal,
+      req.messages,
+    );
   }
 
-  private async *stream(maxTokens: number, system: string, user: string, signal: AbortSignal): AsyncIterable<string> {
+  private async *stream(
+    maxTokens: number,
+    system: string,
+    user: string,
+    signal: AbortSignal,
+    history?: ChatMessage[],
+  ): AsyncIterable<string> {
     const params: Anthropic.Beta.Messages.MessageCreateParamsStreaming = {
       model: this.model,
       max_tokens: maxTokens,
       system,
-      messages: [{ role: "user", content: user }],
+      messages: history?.length ? history : [{ role: "user", content: user }],
       stream: true,
     };
     // Esfuerzo bajo = respuestas más rápidas, ideal para autocompletado.

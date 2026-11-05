@@ -2,7 +2,7 @@
   "name": "ghostcode",
   "displayName": "GhostCode — Autocompletado IA",
   "description": "Autocompletado de código con IA (tipo Copilot) en local con Ollama o por API, más herramientas: documentar, arreglar errores, explicar código/SQL/regex y mensajes de commit.",
-  "version": "0.9.2",
+  "version": "0.10.0",
   "publisher": "edgar",
   "author": {
     "name": "GMR027",
@@ -87,6 +87,10 @@
       {
         "command": "ghostcode.fixIndentation",
         "title": "GhostCode: Corregir indentación"
+      },
+      {
+        "command": "ghostcode.verticalAttributes",
+        "title": "GhostCode: Acomodar atributos en vertical"
       },
       {
         "command": "ghostcode.annotate",
@@ -220,6 +224,11 @@
           "command": "ghostcode.checkPaths",
           "when": "editorTextFocus",
           "group": "1_modification@96"
+        },
+        {
+          "command": "ghostcode.verticalAttributes",
+          "when": "editorTextFocus && !editorReadonly",
+          "group": "1_modification@97"
         }
       ],
       "commandPalette": [

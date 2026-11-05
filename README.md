@@ -34,9 +34,10 @@ Todas están en el panel de GhostCode (icono del fantasma en la barra lateral), 
 | | **Arreglar error con IA** | Sobre cualquier error o advertencia (también con `Ctrl+.`) propone un arreglo y te muestra el cambio antes de aplicarlo. |
 | | **Corrección de rutas** | Revisa `href`, `src`, `import`, `require`, `include`, `url()`, `@use`… y marca las rutas que no existen en tu proyecto, con la corrección propuesta. **Mostrar rutas rota(s)** las lista por archivo con «Ir» y «Corregir». |
 | | **Corregir indentación** | Corrige la sangría de la selección o del archivo con el número de espacios que elijas, sin tocar nada más. |
+| | **Atributos en vertical** | En HTML, PHP, Vue, JSX… pone cada atributo de una etiqueta en su propia línea (un atributo por línea), con el cierre `>` o `/>` alineado con la etiqueta. Actúa sobre la selección o todo el archivo y solo toca etiquetas con dos o más atributos. |
 | | **Explicar al pasar el puntero** | Al pasar el ratón sobre una función, clase, consulta **SQL** o **expresión regular**, muestra qué hace (y avisa si un SQL es vulnerable a inyección). El botón **Ir a función** abre el archivo donde está definida. |
 | **IA** | **Halo IA** | Analiza una carpeta o un repositorio tuyo y aprende cómo escribes (estilo, nombres, hábitos). Un indicador (halo) pasa de gris a un anillo animado mientras analiza y a verde cuando está listo. Mientras VS Code esté abierto, el autocompletado y las herramientas imitan tu estilo. **Guardar temporal** conserva el análisis al cerrar y reabrir VS Code (sin volver a meter las carpetas) hasta que pulses **Limpiar**. |
-| | **Asistente** | Pega unas líneas de código y te explica qué hace, detecta errores y señala fallas de seguridad, con tu modelo local o tu API. |
+| | **Asistente** | Chat con el fantasma de GhostCode. Pega extractos de código y pregúntale lo que necesites: qué hace, por qué falla, dónde está el error, fallas de seguridad, mejoras o cómo refactorizarlo. Recuerda la conversación mientras la sesión de VS Code esté abierta. Puedes copiar y pegar código o usar **Usar selección** para adjuntar lo seleccionado en el editor. `Enter` envía y `Shift+Enter` hace salto de línea. |
 | | **Renombrado en vivo** | Al cambiar el nombre de una variable, función o clase (o una clase CSS), lo cambia en todos los lugares donde se usa: el archivo, el marcado, las hojas de estilo (CSS/SCSS/Sass/Less) y el JavaScript (`querySelector`, `classList`). Si otras páginas usan la clase, te pregunta antes. Incluye «Deshacer». La IA decide las coincidencias dudosas. |
 | | **Metodología BEM** | Sugiere clases `bloque__elemento--modificador` leyendo las etiquetas hijas y su contenido, y el comando **Aplicar BEM al elemento** rellena solo las etiquetas sin clase. Nunca modifica una clase que ya escribiste. |
 | | **Prompt** | Convierte el código seleccionado en un prompt reutilizable para otro proyecto: **Copiar** o **Crear md-prompt** (lo guarda en `PROMPTS.md`). **Prompt y contexto del proyecto** crea `PROJECT-CONTEXT.md`: de qué trata, objetivo, lenguajes, estructura, frontend y backend. |
@@ -152,10 +153,11 @@ Haz clic en el **fantasma** de la barra lateral izquierda:
 
 - **Arriba**: interruptor para activar/pausar el autocompletado y el selector **Local / API**.
 - **Herramientas**: coloca el cursor en una función (o selecciona código) y pulsa la herramienta. Documentar,
-  Rename, Anotar, Arreglar e Indentación también están en el **menú del clic derecho** del editor, y los arreglos
+  Rename, Anotar, Arreglar, Atributos en vertical e Indentación también están en el **menú del clic derecho** del editor, y los arreglos
   de errores y rutas en la bombilla (`Ctrl+.`).
 - **IA**: en **Halo IA** escribe la ruta de un proyecto tuyo (o la URL de un repositorio) y pulsa **Analizar**. Con **Guardar temporal** el análisis se conserva
   entre sesiones; con **Limpiar** se borra por completo;
+  en **Asistente** pega código y chatea con el fantasma (funcionamiento, errores, refactorización…), y
   en **Prompt**, selecciona código y pulsa **Crear prompt del código seleccionado**.
 - **Proyecto**: estado del repositorio, **Generar mensaje de commit** y extensiones recomendadas.
 - **Modelos**: cambia de modelo local o descarga los recomendados.

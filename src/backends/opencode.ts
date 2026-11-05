@@ -4,7 +4,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseModelList, parseRunOutput } from "../core/opencode";
 import { chatSystemPrompt, chatUserPrompt } from "../core/prompt";
-import { BackendError, type Backend, type ChatRequest, type CompletionRequest } from "../core/types";
+import { BackendError, type Backend, type ChatMessage, type ChatRequest, type CompletionRequest } from "../core/types";
 
 /** Ruta del CLI: el PATH de VS Code a veces no incluye ~/.opencode/bin. */
 export function opencodeBin(): string | undefined {
@@ -68,6 +68,12 @@ export class OpencodeBackend implements Backend {
   }
 
   async *chat(req: ChatRequest, signal: AbortSignal): AsyncIterable<string> {
-    yield await ask(this.model, req.system, req.user, signal);
+    yield await ask(this.model, req.system, transcript(req), signal);
   }
+}
+
+/** El CLI de OpenCode recibe un solo mensaje: se le pasa la conversación como transcript. */
+function transcript(req: ChatRequest): string {
+  const messages: ChatMessage[] = req.messages?.length ? req.messages : [{ role: "user", content: req.user }];
+  return messages.map((m) => `${m.role === "assistant" ? "Assistant" : "User"}: ${m.content}`).join("\n\n");
 }

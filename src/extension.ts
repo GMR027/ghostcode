@@ -4,9 +4,11 @@ import {
   clearApiKeyCommand, configureApi, selectLocalModel, selectMode, setApiKeyCommand, toggleLanguage,
 } from "./commands";
 import { cfg, createBackend, update } from "./config";
+import { verticalizeTagAttributes } from "./attributes";
 import type { Backend } from "./core/types";
 import { documentFunction } from "./document";
 import { askAssistant } from "./assistant";
+import { askChat } from "./chat";
 import { fixWithAI, GhostCodeActions } from "./fix";
 import { generateCommitMessage, GitInfo } from "./git";
 import { ExplainHoverProvider, type ExplanationRef } from "./hover";
@@ -104,6 +106,7 @@ export function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand("ghostcode.showLog", () => log.show()),
     vscode.commands.registerCommand("ghostcode.fixIndentation", (spaces?: number) => fixIndentation(spaces)),
+    vscode.commands.registerCommand("ghostcode.verticalAttributes", () => verticalizeTagAttributes()),
     vscode.commands.registerCommand("ghostcode.rename", (opts?: { pick?: number; dryRun?: boolean }) => renameWithAI(context.secrets, toolMode(), log, project, opts)),
     vscode.commands.registerCommand("ghostcode.checkPaths", () => paths.fixAtCursor()),
     vscode.commands.registerCommand("ghostcode.checkProjectPaths", () => paths.checkProject()),
@@ -147,6 +150,9 @@ export function activate(context: vscode.ExtensionContext) {
       await vscode.commands.executeCommand("revealLine", { lineNumber: ref.line, at: "center" });
     }),
     vscode.commands.registerCommand("ghostcode.assistant.ask", (code: string) => askAssistant(context.secrets, toolMode(), log, code)),
+    vscode.commands.registerCommand("ghostcode.chat.ask", (history: { role: "user" | "assistant"; content: string }[], question: string) =>
+      askChat(context.secrets, toolMode(), log, history, question),
+    ),
     vscode.commands.registerCommand("ghostcode.annotate", () => annotateSelection(context.secrets, toolMode(), log)),
     vscode.commands.registerCommand("ghostcode.documentFunction", () => documentFunction(context.secrets, toolMode(), log)),
     vscode.commands.registerCommand("ghostcode.fixWithAI", (uri?: vscode.Uri, range?: vscode.Range) =>

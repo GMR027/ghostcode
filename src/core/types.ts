@@ -22,12 +22,20 @@ export interface CompletionRequest {
   style?: string;
 }
 
+/** Un turno de una conversación de chat. */
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 /** Petición de texto libre (herramientas como las anotaciones), no de autocompletado. */
 export interface ChatRequest {
   system: string;
   user: string;
   maxTokens: number;
   temperature: number;
+  /** Conversación completa; si falta, se usa `user` como único mensaje. */
+  messages?: ChatMessage[];
 }
 
 export interface Backend {
