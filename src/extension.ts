@@ -5,10 +5,13 @@ import {
 } from "./commands";
 import { cfg, createBackend, update } from "./config";
 import { verticalizeTagAttributes } from "./attributes";
+import { toggleCompact } from "./compact";
 import type { Backend } from "./core/types";
 import { documentFunction } from "./document";
 import { askAssistant } from "./assistant";
 import { askChat } from "./chat";
+import { ColorsService } from "./colors";
+import { COLOR_PRESETS } from "./core/colors";
 import { fixWithAI, GhostCodeActions } from "./fix";
 import { generateCommitMessage, GitInfo } from "./git";
 import { ExplainHoverProvider, type ExplanationRef } from "./hover";
@@ -36,12 +39,13 @@ export function activate(context: vscode.ExtensionContext) {
   const project = new ProjectIndex(log);
   const files = new WorkspaceFiles();
   const halo = new HaloService(context.globalStorageUri.fsPath, context.secrets, toolMode, log);
+  const colors = new ColorsService(context);
   void halo.restore();
   setChatStyle(() => halo.chatContext());
   const provider = new GhostCodeProvider(() => backend, status, log, project, halo);
   const git = new GitInfo();
   const paths = new PathChecker(files, project);
-  const panel = new GhostCodePanel(context, () => backend?.label, () => lastMode, { git, project, halo, paths, files });
+  const panel = new GhostCodePanel(context, () => backend?.label, () => lastMode, { git, project, halo, paths, files, colors });
   const liveRename = new LiveRename(context.secrets, toolMode, log);
   const hover = new ExplainHoverProvider(context.secrets, toolMode, log, project);
   const hasGit = async () => (await git.status()).status === "repo";
@@ -107,6 +111,20 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("ghostcode.showLog", () => log.show()),
     vscode.commands.registerCommand("ghostcode.fixIndentation", (spaces?: number) => fixIndentation(spaces)),
     vscode.commands.registerCommand("ghostcode.verticalAttributes", () => verticalizeTagAttributes()),
+    vscode.commands.registerCommand("ghostcode.toggleCompact", () => toggleCompact()),
+    vscode.commands.registerCommand("ghostcode.colors.pick", async () => {
+      const picked = await vscode.window.showQuickPick(
+        COLOR_PRESETS.map((p) => ({ label: p.label, description: p.id, id: p.id })),
+        { title: "GhostCode: colores del código", placeHolder: "Elige un tema de color" },
+      );
+      if (picked) {
+        await colors.applyPreset(picked.id);
+        panel.refresh();
+      }
+    }),
+    vscode.commands.registerCommand("ghostcode.colors.reset", async () => {
+      if (await colors.reset()) panel.refresh();
+    }),
     vscode.commands.registerCommand("ghostcode.rename", (opts?: { pick?: number; dryRun?: boolean }) => renameWithAI(context.secrets, toolMode(), log, project, opts)),
     vscode.commands.registerCommand("ghostcode.checkPaths", () => paths.fixAtCursor()),
     vscode.commands.registerCommand("ghostcode.checkProjectPaths", () => paths.checkProject()),

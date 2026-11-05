@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { OllamaBackend } from "./backends/ollama";
 import { enableApiMode, pullModel } from "./commands";
 import { cfg, defaultApiModel, PROVIDER_LABELS, update } from "./config";
+import type { ColorsService } from "./colors";
 import { describeHardware, isCompletionOnly, pickChatModel, suggestModels } from "./core/models";
 import type { ChatMessage } from "./core/types";
 import type { GitInfo } from "./git";
@@ -19,6 +20,7 @@ export interface PanelServices {
   halo: HaloService;
   paths: PathChecker;
   files: WorkspaceFiles;
+  colors: ColorsService;
 }
 
 /** Mensajes que envía la vista (media/panel.js). */
@@ -27,11 +29,15 @@ type Msg =
       type:
         | "ready" | "refresh" | "toggle" | "toggleHover" | "toggleLiveRename" | "toggleBem" | "bemApply" | "toggleProjectContext" | "togglePathCheck" | "toggleHalo"
         | "configureApi" | "annotate" | "document" | "fix" | "rename" | "checkPaths" | "checkProjectPaths" | "verticalAttrs"
+        | "compactToggle"
         | "commit" | "gitInit" | "publish" | "openRemote" | "openScm" | "settings"
-        | "haloBrowse" | "haloWorkspace" | "haloSave" | "haloClear" | "chatClear" | "chatSelection" | "prompt" | "projectContext" | "refreshExtensions";
+        | "haloBrowse" | "haloWorkspace" | "haloSave" | "haloClear" | "chatClear" | "chatSelection" | "prompt" | "projectContext" | "refreshExtensions"
+        | "resetColors";
     }
   | { type: "indent"; spaces?: string }
   | { type: "indentSize"; value: string }
+  | { type: "applyColorPreset"; id: string }
+  | { type: "colorChange"; key: string; value: string }
   | { type: "haloAnalyze" | "chatSend"; value: string }
   | { type: "haloRemove"; id: string }
   | { type: "copyPrompt" | "savePrompt"; value: string }
@@ -173,6 +179,17 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
         return void vscode.commands.executeCommand("ghostcode.checkProjectPaths");
       case "verticalAttrs":
         return void vscode.commands.executeCommand("ghostcode.verticalAttributes");
+      case "compactToggle":
+        return void vscode.commands.executeCommand("ghostcode.toggleCompact");
+      case "applyColorPreset":
+        await this.services.colors.applyPreset(m.id);
+        return this.post();
+      case "colorChange":
+        // Sin repintar el panel: así el selector de color no se cierra al moverlo.
+        return this.services.colors.setColor(m.key, m.value);
+      case "resetColors":
+        await this.services.colors.reset();
+        return this.post();
       case "haloAnalyze":
         await this.services.halo.analyze(m.value);
         return;
@@ -378,6 +395,7 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
       halo: this.services.halo.list().map((h) => ({ id: h.id, name: h.name, input: h.input, files: h.files, functions: h.functions, tags: h.styleTags, summary: h.summary, cloned: h.cloned, project: h.project })),
       chat: this.chat,
       chatBusy: this.chatBusy,
+      colors: await this.services.colors.state(),
       prompt: this.prompt,
       promptBusy: this.promptBusy,
       promptsFile: c.promptsFile,

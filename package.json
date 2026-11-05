@@ -2,7 +2,7 @@
   "name": "ghostcode",
   "displayName": "GhostCode — Autocompletado IA",
   "description": "Autocompletado de código con IA (tipo Copilot) en local con Ollama o por API, más herramientas: documentar, arreglar errores, explicar código/SQL/regex y mensajes de commit.",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "publisher": "edgar",
   "author": {
     "name": "GMR027",
@@ -91,6 +91,18 @@
       {
         "command": "ghostcode.verticalAttributes",
         "title": "GhostCode: Acomodar atributos en vertical"
+      },
+      {
+        "command": "ghostcode.toggleCompact",
+        "title": "GhostCode: Compactar o expandir bloque"
+      },
+      {
+        "command": "ghostcode.colors.pick",
+        "title": "GhostCode: Elegir colores del código"
+      },
+      {
+        "command": "ghostcode.colors.reset",
+        "title": "GhostCode: Restaurar estilos anteriores"
       },
       {
         "command": "ghostcode.annotate",
@@ -229,6 +241,11 @@
           "command": "ghostcode.verticalAttributes",
           "when": "editorTextFocus && !editorReadonly",
           "group": "1_modification@97"
+        },
+        {
+          "command": "ghostcode.toggleCompact",
+          "when": "editorTextFocus",
+          "group": "1_modification@98"
         }
       ],
       "commandPalette": [

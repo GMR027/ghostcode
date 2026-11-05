@@ -35,6 +35,7 @@ Todas están en el panel de GhostCode (icono del fantasma en la barra lateral), 
 | | **Corrección de rutas** | Revisa `href`, `src`, `import`, `require`, `include`, `url()`, `@use`… y marca las rutas que no existen en tu proyecto, con la corrección propuesta. **Mostrar rutas rota(s)** las lista por archivo con «Ir» y «Corregir». |
 | | **Corregir indentación** | Corrige la sangría de la selección o del archivo con el número de espacios que elijas, sin tocar nada más. |
 | | **Atributos en vertical** | En HTML, PHP, Vue, JSX… pone cada atributo de una etiqueta en su propia línea (un atributo por línea), con el cierre `>` o `/>` alineado con la etiqueta. Actúa sobre la selección o todo el archivo y solo toca etiquetas con dos o más atributos. |
+| | **Compactación** | Pliega o despliega el bloque de la función o etiqueta más cercano al cursor (o el que contiene la selección), como las etiquetas hijas de un `div`. No modifica el código: usa el plegado del editor y puedes volver a expandirlo cuando quieras. |
 | | **Explicar al pasar el puntero** | Al pasar el ratón sobre una función, clase, consulta **SQL** o **expresión regular**, muestra qué hace (y avisa si un SQL es vulnerable a inyección). El botón **Ir a función** abre el archivo donde está definida. |
 | **IA** | **Halo IA** | Analiza una carpeta o un repositorio tuyo y aprende cómo escribes (estilo, nombres, hábitos). Un indicador (halo) pasa de gris a un anillo animado mientras analiza y a verde cuando está listo. Mientras VS Code esté abierto, el autocompletado y las herramientas imitan tu estilo. **Guardar temporal** conserva el análisis al cerrar y reabrir VS Code (sin volver a meter las carpetas) hasta que pulses **Limpiar**. |
 | | **Asistente** | Chat con el fantasma de GhostCode. Pega extractos de código y pregúntale lo que necesites: qué hace, por qué falla, dónde está el error, fallas de seguridad, mejoras o cómo refactorizarlo. Recuerda la conversación mientras la sesión de VS Code esté abierta. Puedes copiar y pegar código o usar **Usar selección** para adjuntar lo seleccionado en el editor. `Enter` envía y `Shift+Enter` hace salto de línea. |
@@ -43,7 +44,8 @@ Todas están en el panel de GhostCode (icono del fantasma en la barra lateral), 
 | | **Prompt** | Convierte el código seleccionado en un prompt reutilizable para otro proyecto: **Copiar** o **Crear md-prompt** (lo guarda en `PROMPTS.md`). **Prompt y contexto del proyecto** crea `PROJECT-CONTEXT.md`: de qué trata, objetivo, lenguajes, estructura, frontend y backend. |
 | **Proyecto** | **Conexión GitHub** | Repositorio, rama, cambios y remoto; si no hay repositorio, lo indica. **Generar mensaje de commit** escribe el mensaje a partir de tus cambios. |
 | | **Extensiones recomendadas** | Según los lenguajes y herramientas del proyecto, con botón para instalarlas. En VSCodium (que usa Open VSX) algunas de Microsoft, como Pylance o C# Dev Kit, pueden no estar disponibles: el botón avisa y puedes buscarlas con **Ver**. |
-| **Modelos** | **Modelos** | Los modelos que tienes en Ollama y los recomendados para tu GPU y RAM, con descarga en un clic. |
+| **Ajustes** | **Apariencia del código** | Temas de color listos (GhostCode oscuro, claro, Neón, Pastel, Alto contraste y Océano) y personalización por categoría: etiquetas, atributos, funciones, textos, comentarios, palabras clave, números, tipos, variables, operadores, fondo y texto base. Se aplican a todo VS Code/Codium y **Restaurar Estilos** devuelve los colores que tenías antes. |
+| | **Modelos** | Los modelos que tienes en Ollama y los recomendados para tu GPU y RAM, con descarga en un clic. |
 
 ---
 
@@ -153,14 +155,14 @@ Haz clic en el **fantasma** de la barra lateral izquierda:
 
 - **Arriba**: interruptor para activar/pausar el autocompletado y el selector **Local / API**.
 - **Herramientas**: coloca el cursor en una función (o selecciona código) y pulsa la herramienta. Documentar,
-  Rename, Anotar, Arreglar, Atributos en vertical e Indentación también están en el **menú del clic derecho** del editor, y los arreglos
+  Rename, Anotar, Arreglar, Atributos en vertical, Compactación e Indentación también están en el **menú del clic derecho** del editor, y los arreglos
   de errores y rutas en la bombilla (`Ctrl+.`).
 - **IA**: en **Halo IA** escribe la ruta de un proyecto tuyo (o la URL de un repositorio) y pulsa **Analizar**. Con **Guardar temporal** el análisis se conserva
   entre sesiones; con **Limpiar** se borra por completo;
   en **Asistente** pega código y chatea con el fantasma (funcionamiento, errores, refactorización…), y
   en **Prompt**, selecciona código y pulsa **Crear prompt del código seleccionado**.
 - **Proyecto**: estado del repositorio, **Generar mensaje de commit** y extensiones recomendadas.
-- **Modelos**: cambia de modelo local o descarga los recomendados.
+- **Ajustes**: elige o personaliza los colores del código y cambia de modelo local o descarga los recomendados.
 
 Todos los comandos están también en la paleta (`Ctrl+Shift+P` → «GhostCode»).
 
@@ -178,7 +180,7 @@ proveedor, la URL (si hace falta), el modelo y la API key.
 
 Los modelos *base* del autocompletado no siguen instrucciones. Para documentar, arreglar, explicar, Rename,
 Prompt y Halo IA, GhostCode usa un modelo *instruct* (por ejemplo `qwen2.5-coder:3b`). Si no tienes ninguno, te
-ofrece descargarlo; también puedes hacerlo desde la pestaña **Modelos**. En modo API se usa tu proveedor.
+ofrece descargarlo; también puedes hacerlo desde la pestaña **Ajustes**. En modo API se usa tu proveedor.
 
 ---
 
@@ -210,7 +212,7 @@ ofrece descargarlo; también puedes hacerlo desde la pestaña **Modelos**. En mo
 - **«Ollama no responde»**: inícialo con `systemctl start ollama` (o `ollama serve`).
 - **GPU AMD sin usar** (el modelo va por CPU): `sudo systemctl edit ollama` y añade
   `Environment="OLLAMA_VULKAN=1"` en `[Service]`; luego `sudo systemctl restart ollama`.
-- **Las sugerencias tardan**: usa un modelo más pequeño en la pestaña **Modelos**.
+- **Las sugerencias tardan**: usa un modelo más pequeño en la pestaña **Ajustes**.
 - **Registro**: `Ctrl+Shift+P` → «GhostCode: Ver registro».
 
 ---

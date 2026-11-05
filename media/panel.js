@@ -68,7 +68,22 @@ function sendChat() {
 const drafts = {};
 app.addEventListener("input", (e) => {
   const el = /** @type {HTMLInputElement} */ (e.target);
-  if (el.id) drafts[el.id] = el.value;
+  // Los colores se aplican aparte y no deben quedar guardados como borrador.
+  if (el.id && !el.dataset.color) drafts[el.id] = el.value;
+});
+
+let colorTimer;
+app.addEventListener("input", (e) => {
+  const el = /** @type {HTMLInputElement} */ (e.target);
+  if (!el.dataset?.color) return;
+  // Al mover un color el tema pasa a ser personalizado.
+  document.querySelectorAll(".theme-card.active").forEach((card) => card.classList.remove("active"));
+  const currentEl = document.getElementById("colorsCurrent");
+  if (currentEl) currentEl.innerHTML = "Activo: <strong>Personalizado</strong>";
+  clearTimeout(colorTimer);
+  const key = el.dataset.color;
+  const value = el.value;
+  colorTimer = setTimeout(() => vscode.postMessage({ type: "colorChange", key, value }), 180);
 });
 app.addEventListener("keydown", (e) => {
   // Enter en el campo de Halo IA = Analizar.
@@ -108,6 +123,7 @@ const PATHS = {
   star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L12 16.9l-5.25 2.7 1-5.8L3.5 9.7l5.9-.9z"/>',
   indent: '<path d="M3 5h18M10 10h11M10 14h11M3 19h18M3 9.5l3 2.5-3 2.5"/>',
   vertical: '<path d="M4 5v14M9 7h11M9 12h11M9 17h7"/>',
+  compact: '<path d="M4 4h16M4 20h16M8 9l4 3 4-3M8 15l4-3 4 3"/>',
   comment: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
   pointer: '<path d="M5 3l14 7-6 2-2 6z"/><path d="M13 12l5 5"/>',
   book: '<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20M8 7h8M8 10.5h5"/>',
@@ -172,7 +188,7 @@ const TABS = [
   { id: "tools", ico: /** @type {const} */ ("sparkle"), label: "Herramientas" },
   { id: "ai", ico: /** @type {const} */ ("halo"), label: "IA" },
   { id: "project", ico: /** @type {const} */ ("repo"), label: "Proyecto" },
-  { id: "models", ico: /** @type {const} */ ("cpu"), label: "Modelos" },
+  { id: "settings", ico: /** @type {const} */ ("settings"), label: "Ajustes" },
 ];
 
 function tabs(s) {
@@ -185,7 +201,11 @@ function tabs(s) {
   }).join("")}</nav>`;
 }
 
-const current = () => (TABS.some((t) => t.id === saved.tab) ? saved.tab : "tools");
+const current = () => {
+  // Quien tuviera abierta la antigua pestaña «Modelos» pasa a «Ajustes».
+  if (saved.tab === "models") saved.tab = "settings";
+  return TABS.some((t) => t.id === saved.tab) ? saved.tab : "tools";
+};
 
 function footer(s) {
   return `<footer class="credits">
@@ -223,7 +243,7 @@ function render() {
     tools: () => toolsSection(s),
     ai: () => haloSection(s) + chatSection(s) + promptSection(s),
     project: () => gitSection(s) + extensionsSection(s),
-    models: () => modelsSection(s),
+    settings: () => colorsSection(s) + modelsSection(s),
   }[current()]();
   app.innerHTML = header(s) + tabs(s) + `<main class="tab-panel" role="tabpanel">${content}</main>` + footer(s);
   app.querySelector(".logo-slot")?.replaceWith(logo);
@@ -234,7 +254,7 @@ function render() {
   if (focus) {
     const el = /** @type {HTMLInputElement | null} */ (document.getElementById(focus.id));
     el?.focus();
-    if (el && focus.start !== null) el.setSelectionRange(focus.start, focus.end);
+    if (el && focus.start !== null && el.type !== "color") el.setSelectionRange(focus.start, focus.end);
   }
   // El chat siempre muestra el último mensaje.
   const log = /** @type {HTMLElement | null} */ (document.getElementById("chatLog"));
@@ -342,6 +362,7 @@ function toolsSection(s) {
           </div>
         </div>
         ${tile("vertical", "Atributos en vertical", "Un atributo por línea en la selección o el archivo", "verticalAttrs")}
+        ${tile("compact", "Compactación", "Pliega o despliega la función o etiqueta bajo el cursor", "compactToggle")}
       </div>`,
       ) +
       group(
@@ -645,7 +666,55 @@ function ollamaDown(s) {
 const kindChip = (completion) =>
   completion ? `<span class="chip completion">Autocompletado</span>` : `<span class="chip chat">Herramientas</span>`;
 
-// --- Modelos (instalados y sugeridos) ---------------------------------------------------
+// --- Ajustes: colores del código y modelos ---------------------------------------------
+function colorsSection(s) {
+  const c = s.colors;
+  if (!c) return "";
+  // Sin tema aplicado, los selectores parten del preset oscuro (igual que el servicio).
+  const scheme = c.scheme ?? c.presets[0];
+  const activeId = c.scheme?.id;
+  const swatches = (colors) =>
+    ["tag", "function", "string", "keyword", "comment"]
+      .map((k) => `<i style="background:${esc(colors[k])}"></i>`)
+      .join("");
+  const presets = c.presets
+    .map(
+      (p) => `<button class="theme-card ${p.id === activeId ? "active" : ""}" data-action="applyColorPreset" data-id="${esc(p.id)}" aria-pressed="${p.id === activeId}">
+        <span class="theme-top"><span class="theme-name">${esc(p.label)}</span>${p.id === activeId ? `<span class="state">${icon("check")}Activo</span>` : ""}</span>
+        <span class="theme-swatches">${swatches(p.colors)}</span>
+      </button>`,
+    )
+    .join("");
+  const value = (key) =>
+    key === "background" ? scheme?.background : key === "foreground" ? scheme?.foreground : scheme?.colors?.[key];
+  const fields = c.fields
+    .map(
+      (f) => `<label class="color-field"><span>${esc(f.label)}</span>
+        <input id="color-${esc(f.key)}" type="color" value="${esc(value(f.key) ?? "#000000")}" data-color="${esc(f.key)}" aria-label="${esc(f.label)}">
+      </label>`,
+    )
+    .join("");
+  const currentLabel = c.scheme
+    ? `Activo: <strong>${esc(c.scheme.label)}</strong>`
+    : "Todavía no has aplicado un tema de GhostCode.";
+  return section(
+    "settings",
+    "settings",
+    "Apariencia del código",
+    "Elige un tema o cambia los colores base del código y del editor",
+    `<p class="colors-current" id="colorsCurrent">${currentLabel}</p>
+    <div class="theme-grid">${presets}</div>
+    <details class="sub" ${activeId && activeId !== "custom" ? "" : "open"}>
+      <summary>${icon("settings")}Personalizar colores</summary>
+      <div class="color-grid">${fields}</div>
+      <p class="muted">Los cambios se aplican al instante en todos tus proyectos.</p>
+    </details>
+    <div class="row-btns">
+      <button class="btn ghost" data-action="resetColors" title="${c.hasBackup ? "Volver a los estilos que tenías antes" : "Todavía no hay estilos guardados; se guardarán al aplicar un color"}">${icon("refresh")}Restaurar Estilos</button>
+    </div>`,
+  );
+}
+
 function modelsSection(s) {
   let installed;
   if (s.ollamaError) installed = ollamaDown(s);
