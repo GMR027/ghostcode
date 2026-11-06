@@ -3,26 +3,22 @@ import { test } from "node:test";
 import {
   CATEGORY_SCOPES,
   COLOR_FIELDS,
-  COLOR_PRESETS,
+  DEFAULT_SCHEME,
   mergeSemanticRules,
   mergeTextMateRules,
-  schemeById,
   semanticRules,
   tokenRules,
   workbenchColors,
   type ColorCategory,
 } from "../src/core/colors";
+import { DEFAULT_BRACKETS, mergeBracketColors, normalizeBrackets } from "../src/core/brackets";
 
 const hex = /^#[0-9a-f]{6}$/i;
 
-test("colores: los presets están completos y son válidos", () => {
-  assert.ok(COLOR_PRESETS.length >= 4);
-  assert.equal(new Set(COLOR_PRESETS.map((p) => p.id)).size, COLOR_PRESETS.length);
-  for (const preset of COLOR_PRESETS) {
-    assert.match(preset.background, hex);
-    assert.match(preset.foreground, hex);
-    for (const key of Object.keys(CATEGORY_SCOPES) as ColorCategory[]) assert.match(preset.colors[key], hex);
-  }
+test("colores: la paleta base está completa y es válida", () => {
+  assert.match(DEFAULT_SCHEME.background, hex);
+  assert.match(DEFAULT_SCHEME.foreground, hex);
+  for (const key of Object.keys(CATEGORY_SCOPES) as ColorCategory[]) assert.match(DEFAULT_SCHEME.colors[key], hex);
 });
 
 test("colores: cada categoría tiene scopes y campo editable", () => {
@@ -33,7 +29,7 @@ test("colores: cada categoría tiene scopes y campo editable", () => {
 });
 
 test("colores: las reglas TextMate usan los colores del tema", () => {
-  const preset = schemeById("neon")!;
+  const preset = DEFAULT_SCHEME;
   const rules = tokenRules(preset);
   const tags = rules.find((r) => r.scope.includes("entity.name.tag"));
   assert.ok(tags);
@@ -61,7 +57,7 @@ test("colores: mergeTextMateRules tolera valores que no son listas", () => {
 });
 
 test("colores: reglas semánticas y workbench", () => {
-  const preset = schemeById("ocean")!;
+  const preset = DEFAULT_SCHEME;
   const semantic = semanticRules(preset);
   assert.equal(semantic.function.foreground, preset.colors.function);
   assert.equal(semantic.method.foreground, preset.colors.function);
@@ -83,4 +79,30 @@ test("colores: mergeSemanticRules conserva lo demás y añade los tipos de Ghost
   assert.deepEqual(rules.macro, { fontStyle: "italic" });
   assert.deepEqual(rules.function, { foreground: "#0af0af" });
   assert.deepEqual(out["[Default Dark+]"], existing["[Default Dark+]"]);
+});
+
+test("corchetes: normaliza valores incompletos o inválidos", () => {
+  assert.deepEqual(normalizeBrackets(undefined), DEFAULT_BRACKETS);
+  const settings = normalizeBrackets({ levels: ["#123456", "nope"], guides: false });
+  assert.equal(settings.levels[0], "#123456");
+  assert.equal(settings.levels[1], DEFAULT_BRACKETS.levels[1]);
+  assert.equal(settings.guides, false);
+  assert.equal(settings.indentation, DEFAULT_BRACKETS.indentation);
+});
+
+test("corchetes: colorea los 6 niveles y las guías activas", () => {
+  const colors = mergeBracketColors({}, { ...DEFAULT_BRACKETS, indentation: true });
+  for (let n = 1; n <= 6; n++) {
+    assert.equal(colors[`editorBracketHighlight.foreground${n}`], DEFAULT_BRACKETS.levels[n - 1]);
+    assert.equal(colors[`editorBracketPairGuide.background${n}`], DEFAULT_BRACKETS.levels[n - 1]);
+    assert.equal(colors[`editorIndentGuide.background${n}`], DEFAULT_BRACKETS.levels[n - 1]);
+  }
+});
+
+test("corchetes: al apagar las guías elimina las claves anteriores", () => {
+  const previous = { "editorBracketPairGuide.background1": "#ffffff", "editorBracketHighlight.foreground1": "#000000" };
+  const colors = mergeBracketColors(previous, { ...DEFAULT_BRACKETS, guides: false, indentation: false });
+  assert.ok(!("editorBracketPairGuide.background1" in colors));
+  assert.equal(colors["editorBracketHighlight.foreground1"], DEFAULT_BRACKETS.levels[0]);
+  assert.ok(!Object.keys(colors).some((k) => k.startsWith("editorIndentGuide.")));
 });

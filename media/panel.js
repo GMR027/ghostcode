@@ -36,6 +36,10 @@ app.addEventListener("click", (e) => {
   if (el.dataset.action === "tab") {
     saved.tab = el.dataset.tab;
     vscode.setState(saved);
+    // Al abrir «Calidad» por primera vez, analiza sin obligar a pulsar el botón.
+    if (saved.tab === "quality" && state && !state.quality?.scannedAt && !state.quality?.busy) {
+      vscode.postMessage({ type: "qualityScan" });
+    }
     render();
     app.querySelector(".tabs")?.scrollIntoView({ block: "nearest" });
     return;
@@ -69,21 +73,20 @@ const drafts = {};
 app.addEventListener("input", (e) => {
   const el = /** @type {HTMLInputElement} */ (e.target);
   // Los colores se aplican aparte y no deben quedar guardados como borrador.
-  if (el.id && !el.dataset.color) drafts[el.id] = el.value;
+  if (el.id && !el.dataset.color && el.dataset.bracket === undefined) drafts[el.id] = el.value;
 });
 
 let colorTimer;
 app.addEventListener("input", (e) => {
   const el = /** @type {HTMLInputElement} */ (e.target);
-  if (!el.dataset?.color) return;
-  // Al mover un color el tema pasa a ser personalizado.
-  document.querySelectorAll(".theme-card.active").forEach((card) => card.classList.remove("active"));
-  const currentEl = document.getElementById("colorsCurrent");
-  if (currentEl) currentEl.innerHTML = "Activo: <strong>Personalizado</strong>";
+  const bracket = el.dataset?.bracket;
+  if (!el.dataset?.color && bracket === undefined) return;
   clearTimeout(colorTimer);
-  const key = el.dataset.color;
   const value = el.value;
-  colorTimer = setTimeout(() => vscode.postMessage({ type: "colorChange", key, value }), 180);
+  colorTimer = setTimeout(() => {
+    if (bracket !== undefined) vscode.postMessage({ type: "bracketChange", index: bracket, value });
+    else vscode.postMessage({ type: "colorChange", key: el.dataset.color, value });
+  }, 180);
 });
 app.addEventListener("keydown", (e) => {
   // Enter en el campo de Halo IA = Analizar.
@@ -152,6 +155,11 @@ const PATHS = {
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>',
   file: '<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/>',
+  shield: '<path d="M12 3l8 3v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
+  flask: '<path d="M9 3h6M10 3v6l-5 8a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-8V3"/><path d="M7.5 15h9"/>',
+  move: '<path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>',
+  duplicate: '<rect x="8" y="8" width="12" height="12" rx="2"/><rect x="4" y="4" width="12" height="12" rx="2"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/>',
 };
 /** @param {keyof typeof PATHS} name */
 const icon = (name, cls = "") =>
@@ -167,19 +175,29 @@ const toggle = (on, action, label) =>
   `<button class="switch" role="switch" aria-checked="${on}" aria-label="${esc(label)}" title="${esc(label)}" data-action="${action}"><span></span></button>`;
 
 /**
- * Una sección: tarjeta con su color (data-hue), icono, título y para qué sirve.
+ * Una sección: tarjeta plegable con su color (data-hue), icono, título y para qué sirve.
+ * El estado de plegado se conserva con `saved.closed` (ver listener `toggle`).
  * @param {string} hue @param {keyof typeof PATHS} ico @param {string} title @param {string} subtitle @param {string} body @param {string} [extra]
  */
 function section(hue, ico, title, subtitle, body, extra = "") {
-  return `<section class="block" data-hue="${hue}">
-    <header class="block-head">
+  const id = `sec-${hue}-${title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")}`;
+  return `<details class="block" data-id="${esc(id)}" data-hue="${hue}" ${openAttr(id)}>
+    <summary class="block-head">
       <span class="block-icon">${icon(ico)}</span>
       <span class="grow"><h2>${title}</h2><p>${subtitle}</p></span>
       ${extra}
-    </header>
+    </summary>
     <div class="body">${body}</div>
-  </section>`;
+  </details>`;
 }
+
+/** `open` salvo que el usuario haya plegado esa sección. @param {string} id */
+const openAttr = (id) => (saved.closed[id] ? "" : "open");
 
 /** Subgrupo dentro de una sección. @param {string} label @param {string} body */
 const group = (label, body) => `<div class="group"><p class="group-label">${label}</p>${body}</div>`;
@@ -187,16 +205,22 @@ const group = (label, body) => `<div class="group"><p class="group-label">${labe
 const TABS = [
   { id: "tools", ico: /** @type {const} */ ("sparkle"), label: "Herramientas" },
   { id: "ai", ico: /** @type {const} */ ("halo"), label: "IA" },
+  { id: "quality", ico: /** @type {const} */ ("shield"), label: "Calidad" },
   { id: "project", ico: /** @type {const} */ ("repo"), label: "Proyecto" },
   { id: "settings", ico: /** @type {const} */ ("settings"), label: "Ajustes" },
 ];
 
 function tabs(s) {
-  const badge = { tools: s.pathIssues || 0, project: s.git?.status === "repo" ? s.git.changes || 0 : 0 };
+  const q = s.quality ?? {};
+  const badge = {
+    tools: s.pathIssues || 0,
+    quality: (q.duplicates?.length || 0) + (q.dead?.length || 0) + (q.a11y?.length || 0),
+    project: s.git?.status === "repo" ? s.git.changes || 0 : 0,
+  };
   return `<nav class="tabs" role="tablist" aria-label="Secciones de GhostCode">${TABS.map((t) => {
     const n = /** @type {Record<string, number>} */ (badge)[t.id];
     return `<button class="tab" role="tab" aria-selected="${current() === t.id}" data-action="tab" data-tab="${t.id}" data-hue="${t.id}">
-      ${icon(t.ico)}<span>${t.label}</span>${n ? `<span class="tab-badge" title="${t.id === "tools" ? "Rutas rotas" : "Cambios sin confirmar"}">${n > 99 ? "99+" : n}</span>` : ""}
+      ${icon(t.ico)}<span>${t.label}</span>${n ? `<span class="tab-badge" title="${t.id === "tools" ? "Rutas rotas" : t.id === "quality" ? "Hallazgos de calidad" : "Cambios sin confirmar"}">${n > 99 ? "99+" : n}</span>` : ""}
     </button>`;
   }).join("")}</nav>`;
 }
@@ -229,6 +253,7 @@ logo.innerHTML = `<svg class="icon ghost" viewBox="0 0 24 24" fill="none" stroke
 setTimeout(() => logo.classList.remove("intro"), 6000);
 
 let lastPrompt = "";
+let autoQuality = false;
 
 function render() {
   const s = state;
@@ -242,10 +267,15 @@ function render() {
   const content = {
     tools: () => toolsSection(s),
     ai: () => haloSection(s) + chatSection(s) + promptSection(s),
-    project: () => gitSection(s) + extensionsSection(s),
+    quality: () => qualitySection(s) + testsSection(s) + doctorSection(s) + auditSection(s),
+    project: () => gitSection(s) + projectToolsSection(s) + extensionsSection(s),
     settings: () => colorsSection(s) + modelsSection(s),
   }[current()]();
   app.innerHTML = header(s) + tabs(s) + `<main class="tab-panel" role="tabpanel">${content}</main>` + footer(s);
+  if (current() === "quality" && s.quality && !s.quality.scannedAt && !s.quality.busy && !autoQuality) {
+    autoQuality = true;
+    vscode.postMessage({ type: "qualityScan" });
+  }
   app.querySelector(".logo-slot")?.replaceWith(logo);
   for (const [id, value] of Object.entries(drafts)) {
     const el = /** @type {HTMLInputElement | null} */ (document.getElementById(id));
@@ -366,6 +396,14 @@ function toolsSection(s) {
       </div>`,
       ) +
       group(
+        "Edición asistida",
+        `<div class="tiles">
+        ${tile("move", "Refactorizar…", "Extraer función o variable, inline, mover… con el language server del lenguaje", "refactor")}
+        ${tile("copy", "Adaptar lo pegado", "Ajusta sangría, comillas, punto y coma y fin de línea al estilo del archivo", "adaptPaste")}
+        ${tile("route", "Asesor de índices SQL", "Analiza la consulta seleccionada y propone índices y una versión optimizada", "sqlIndex")}
+      </div>`,
+      ) +
+      group(
         "Automático",
         `<div class="tiles">
         ${option("pointer", "Explicar al pasar el puntero", "Funciones, clases, SQL y expresiones regulares", s.hoverExplain, "toggleHover")}
@@ -416,11 +454,73 @@ const HALO_TEXT = {
   working: "Analizando tu código…",
   ready: "Listo: Halo IA ya puede actuar",
 };
-/** Halo al estilo del juego: gris en reposo, anillo animado al analizar, verde al terminar. */
+/** Halo al estilo del juego: gris en reposo, anillo tecnológico al analizar, verde al terminar. */
+function haloTicks(count, r1, r2, width = 1) {
+  let out = "";
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2 - Math.PI / 2;
+    const x1 = 120 + Math.cos(a) * r1;
+    const y1 = 120 + Math.sin(a) * r1;
+    const x2 = 120 + Math.cos(a) * r2;
+    const y2 = 120 + Math.sin(a) * r2;
+    out += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke-width="${width}"/>`;
+  }
+  return out;
+}
+
 function haloOrb(status) {
   const st = status === "working" || status === "ready" ? status : "idle";
   return `<div class="halo-orb ${st}" role="status" aria-label="${HALO_TEXT[st]}">
-    <span class="ring"></span><span class="core"></span>
+    <div class="halo-stage">
+      <svg class="halo-ring" viewBox="0 0 240 240" aria-hidden="true">
+        <defs>
+          <radialGradient id="halo-core" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="var(--h3)" stop-opacity="0.95"/>
+            <stop offset="45%" stop-color="var(--h2)" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="var(--h1)" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="halo-metal" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="var(--h3)"/>
+            <stop offset="50%" stop-color="var(--h2)"/>
+            <stop offset="100%" stop-color="var(--h1)"/>
+          </linearGradient>
+          <filter id="halo-glow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="2.2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <g class="halo-circuit" stroke="var(--h2)" stroke-width="1" fill="none" opacity="0.32">
+          <path d="M6 120h52M182 120h52M28 92h28M184 148h28M18 148h30M194 92h28"/>
+          <circle cx="8" cy="120" r="2.2" fill="var(--h3)" stroke="none"/>
+          <circle cx="232" cy="120" r="2.2" fill="var(--h3)" stroke="none"/>
+          <circle cx="28" cy="92" r="1.6" fill="var(--h3)" stroke="none"/>
+          <circle cx="212" cy="148" r="1.6" fill="var(--h3)" stroke="none"/>
+        </g>
+        <g class="ring ring-halo" filter="url(#halo-glow)">
+          <circle cx="120" cy="120" r="104" fill="none" stroke="url(#halo-metal)" stroke-width="2" stroke-dasharray="22 7 6 7"/>
+          <circle cx="120" cy="120" r="112" fill="none" stroke="var(--h1)" stroke-width="1" opacity="0.35"/>
+        </g>
+        <g class="ring ring-outer" stroke="var(--h2)" fill="none">
+          <circle cx="120" cy="120" r="96" stroke-width="1.6" stroke-dasharray="34 10 12 10" opacity="0.9"/>
+          <circle cx="120" cy="120" r="90" stroke-width="4" stroke-dasharray="14 26" opacity="0.55"/>
+        </g>
+        <g class="ring ring-mid" stroke="var(--h3)" fill="none">
+          <circle cx="120" cy="120" r="78" stroke-width="1" stroke-dasharray="2 4" opacity="0.85"/>
+          <circle cx="120" cy="120" r="70" stroke-width="2.6" stroke-dasharray="42 12 8 12" opacity="0.6"/>
+        </g>
+        <g class="ring ring-inner" stroke="var(--h2)" fill="none">
+          <circle cx="120" cy="120" r="60" stroke-width="0.9" opacity="0.5"/>
+          <g class="halo-ticks">${haloTicks(60, 52, 58, 0.9)}</g>
+          <g class="halo-ticks tall">${haloTicks(12, 46, 60, 1.6)}</g>
+        </g>
+        <g class="ring ring-sweep" filter="url(#halo-glow)">
+          <circle cx="120" cy="120" r="84" fill="none" stroke="var(--h3)" stroke-width="3" stroke-linecap="round" stroke-dasharray="54 474" opacity="0.95"/>
+        </g>
+        <circle class="halo-core" cx="120" cy="120" r="42" fill="url(#halo-core)"/>
+        <circle class="halo-core-dot" cx="120" cy="120" r="5.5" fill="var(--h3)" filter="url(#halo-glow)"/>
+      </svg>
+      <span class="halo-bar" aria-hidden="true"><i></i></span>
+    </div>
     <span class="halo-label">${HALO_TEXT[st]}</span>
   </div>`;
 }
@@ -586,6 +686,27 @@ function promptSection(s) {
   );
 }
 
+// --- Entrega y archivos -------------------------------------------------------------
+function projectToolsSection() {
+  return section(
+    "project",
+    "diff",
+    "Entrega y archivos",
+    "Genera el CHANGELOG y mueve archivos sin romper los imports",
+    `<div class="tiles">
+      <button class="tile" data-action="changelog">
+        <span class="tile-icon">${icon("tag")}</span>
+        <span class="grow"><strong>Generar CHANGELOG</strong><small>Agrupa los commits desde la última etiqueta y ofrece guardarlo en CHANGELOG.md</small></span>
+      </button>
+      <button class="tile" data-action="moveFile">
+        <span class="tile-icon">${icon("move")}</span>
+        <span class="grow"><strong>Mover o renombrar archivo</strong><small>Actualiza imports, require, include, @import y url() relativos</small></span>
+      </button>
+    </div>
+    <p class="muted">Mover archivo también está en el menú contextual del explorador.</p>`,
+  );
+}
+
 // --- Extensiones recomendadas ---------------------------------------------------------
 function extensionsSection(s) {
   const e = s.extensions ?? { recs: [], languages: [] };
@@ -666,48 +787,265 @@ function ollamaDown(s) {
 const kindChip = (completion) =>
   completion ? `<span class="chip completion">Autocompletado</span>` : `<span class="chip chat">Herramientas</span>`;
 
+// --- Calidad: duplicados, código muerto y accesibilidad -------------------------------
+const openAtBtn = (label, uri, line, cls = "btn ghost") =>
+  `<button class="${cls}" data-action="openAt" data-uri="${esc(uri)}" data-line="${Number(line) + 1}">${icon("file")}${esc(label)}</button>`;
+
+function qualityHeader(s) {
+  const q = s.quality ?? { duplicates: [], dead: [], unusedImports: [], a11y: [] };
+  const when = q.scannedAt ? new Date(q.scannedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+  return `<div class="row-btns">
+      <button class="btn" data-action="qualityScan" ${q.busy ? "disabled" : ""}>${icon(q.busy ? "refresh" : "shield")}${q.busy ? "Analizando…" : "Analizar proyecto"}</button>
+      ${when ? `<span class="muted">${esc(q.files)} archivos · ${esc(when)}</span>` : ""}
+    </div>
+    ${q.error ? `<div class="notice">${icon("warning")}<div>${esc(q.error)}</div></div>` : ""}`;
+}
+
+function qualitySection(s) {
+  const q = s.quality ?? { duplicates: [], dead: [], unusedImports: [], a11y: [] };
+  const duplicates = (q.duplicates ?? [])
+    .map(
+      (d) => `<article class="card">
+        <div class="card-top"><span class="name">${esc(d.a.name)} → ${esc(d.b.name)}</span><span class="chip plain">${esc(d.similarity)}% parecido</span></div>
+        <p class="note">${esc(d.a.snippet)}</p>
+        <div class="split">
+          <div><span class="muted mono">${esc(d.a.path)}:${d.a.line + 1}</span>${openAtBtn("Abrir A", d.a.uri, d.a.line)}</div>
+          <div><span class="muted mono">${esc(d.b.path)}:${d.b.line + 1}</span>${openAtBtn("Abrir B", d.b.uri, d.b.line)}</div>
+        </div>
+      </article>`,
+    )
+    .join("");
+  const dead = (q.dead ?? [])
+    .map(
+      (d) => `<div class="quality-row">
+        <span class="q-kind">${esc(d.kind === "class" ? "clase" : "función")}</span>
+        <span class="grow"><strong>${esc(d.name)}</strong><small class="mono">${esc(d.path)}:${d.line + 1}</small></span>
+        ${openAtBtn("Abrir", d.uri, d.line)}
+      </div>`,
+    )
+    .join("");
+  const imports = (q.unusedImports ?? [])
+    .map(
+      (u) => `<div class="quality-row">
+        <span class="q-kind">import</span>
+        <span class="grow"><strong>${esc(u.name)}</strong><small class="mono">${esc(u.path)}:${u.line + 1} · ${esc(u.source)}</small></span>
+        ${openAtBtn("Abrir", u.uri, u.line)}
+      </div>`,
+    )
+    .join("");
+
+  return section(
+    "quality",
+    "duplicate",
+    "Código duplicado y muerto",
+    "Bloques parecidos y símbolos que ya no usa nadie",
+    `${qualityHeader(s)}
+    ${
+      !q.scannedAt && !q.busy
+        ? `<p class="muted">El análisis compara las funciones del proyecto y busca referencias. Todo se hace en tu equipo.</p>`
+        : `<details class="sub" data-id="quality-duplicates" ${openAttr("quality-duplicates")}>
+            <summary>${icon("duplicate")}Duplicados (${(q.duplicates ?? []).length})</summary>
+            ${duplicates || `<p class="ok-line">${icon("check")}No encontré funciones claramente duplicadas.</p>`}
+          </details>
+          <details class="sub" data-id="quality-dead" ${openAttr("quality-dead")}>
+            <summary>${icon("trash")}Código muerto (${(q.dead ?? []).length})</summary>
+            ${dead || `<p class="ok-line">${icon("check")}No hay funciones o clases sin referencias.</p>`}
+          </details>
+          <details class="sub" data-id="quality-imports" ${openAttr("quality-imports")}>
+            <summary>${icon("box")}Imports sin usar (${(q.unusedImports ?? []).length})</summary>
+            ${imports || `<p class="ok-line">${icon("check")}No hay imports sin usar.</p>`}
+          </details>`
+    }`,
+  );
+}
+
+function a11ySection(s) {
+  const q = s.quality ?? { a11y: [] };
+  const rows = (q.a11y ?? [])
+    .map(
+      (i) => `<div class="quality-row a11y-${esc(i.level)}">
+        <span class="q-kind">${esc(i.rule)}</span>
+        <span class="grow"><strong>${esc(i.element)} · línea ${i.line + 1}</strong><small>${esc(i.message)}</small></span>
+        ${q.a11yUri ? openAtBtn("Abrir", q.a11yUri, i.line) : ""}
+      </div>`,
+    )
+    .join("");
+  return section(
+    "quality",
+    "shield",
+    "Accesibilidad",
+    "Alt, etiquetas, botones, ids, foco y ARIA en el archivo abierto",
+    q.a11yFile
+      ? `<p class="muted">Revisando <code>${esc(q.a11yFile)}</code> al analizar el proyecto.</p>
+         ${rows || `<p class="ok-line">${icon("check")}Sin problemas de accesibilidad detectados en este archivo.</p>`}`
+      : `<p class="muted">Abre un HTML, JSX, Vue, PHP o plantilla y pulsa «Analizar proyecto» para revisar su accesibilidad.</p>`,
+  );
+}
+
+function testsSection(s) {
+  const t = s.tests ?? { missing: [] };
+  if (!t.file) {
+    return section("tests", "flask", "Tests", "Relaciona el archivo abierto con su test y ejecútalo", `<p class="muted">Abre un archivo de código para ver su test.</p>`);
+  }
+  const missing = (t.missing ?? [])
+    .map((m) => `<div class="quality-row"><span class="q-kind">sin test</span><span class="grow"><strong>${esc(m.name)}</strong><small>línea ${m.line + 1}</small></span></div>`)
+    .join("");
+  return section(
+    "tests",
+    "flask",
+    "Tests",
+    "Relaciona el archivo abierto con su test y ejecútalo",
+    `<div class="facts">
+      <div class="fact">${icon("file")}<span class="label">Archivo</span><span class="value mono">${esc(t.file)}</span></div>
+      <div class="fact">${icon("flask")}<span class="label">Test</span><span class="value mono">${esc(t.testFile ?? "sin test encontrado")}</span></div>
+      <div class="fact">${icon("cpu")}<span class="label">Framework</span><span class="value">${esc(t.framework ?? "no detectado")}</span></div>
+    </div>
+    <div class="row-btns">
+      <button class="btn ghost" data-action="testOpen" ${t.testFile ? "" : "disabled"}>${icon("file")}Ir al test</button>
+      <button class="btn" data-action="testRun" ${t.command ? "" : "disabled"}>${icon("flask")}Ejecutar test</button>
+      <button class="btn ghost" data-action="testRefresh" title="Volver a detectar">${icon("refresh")}</button>
+    </div>
+    ${t.command ? `<p class="muted mono cmd">${esc(t.command)}</p>` : ""}
+    ${missing ? `<details class="sub" data-id="tests-missing" ${openAttr("tests-missing")}><summary>${icon("flask")}Funciones sin mención en el test (${(t.missing ?? []).length})</summary>${missing}</details>` : `<p class="ok-line">${icon("check")}Todas las funciones aparecen en el test.</p>`}`,
+  );
+}
+
+function doctorSection(s) {
+  const d = s.doctor ?? { items: [], versions: {}, files: 0 };
+  const badge = (level) => `<span class="health ${esc(level)}">${level === "error" ? "Error" : level === "warning" ? "Aviso" : "Info"}</span>`;
+  const items = (d.items ?? [])
+    .map(
+      (i) => `<div class="quality-row">
+        <span class="q-kind">${badge(i.level)}</span>
+        <span class="grow"><strong>${esc(i.title)}</strong><small>${esc(i.detail)}</small>${i.fix ? `<small class="fix">${esc(i.fix)}</small>` : ""}</span>
+      </div>`,
+    )
+    .join("");
+  const versions = [d.versions?.node ? `Node ${d.versions.node}` : "", d.versions?.php ? `PHP ${d.versions.php}` : "", d.versions?.python ? `Python ${d.versions.python}` : ""].filter(Boolean);
+  return section(
+    "quality",
+    "shield",
+    "Doctor del proyecto",
+    "Versiones, lockfiles, dependencias instaladas y variables de entorno",
+    `<div class="row-btns">
+      <button class="btn" data-action="doctorCheck" ${d.busy ? "disabled" : ""}>${icon("refresh")}${d.busy ? "Revisando…" : "Revisar entorno"}</button>
+      ${versions.map((v) => `<span class="chip plain">${esc(v)}</span>`).join("")}
+    </div>
+    ${d.error ? `<div class="notice">${icon("warning")}<div>${esc(d.error)}</div></div>` : ""}
+    ${
+      !d.at && !d.busy
+        ? `<p class="muted">Comprueba que el proyecto se puede ejecutar: versiones, dependencias y configuración.</p>`
+        : items || `<p class="ok-line">${icon("check")}El entorno del proyecto está en orden.</p>`
+    }`,
+  );
+}
+
+function auditSection(s) {
+  const a = s.audit ?? { items: [], outdated: [] };
+  const sev = (x) => `<span class="sev ${esc(x.severity)}">${esc(x.severity)}</span>`;
+  const items = (a.items ?? [])
+    .map(
+      (i) => `<div class="quality-row">
+        ${sev(i)}
+        <span class="grow"><strong>${esc(i.package)}${i.version ? ` <span class="muted">${esc(i.version)}</span>` : ""}</strong><small>${esc(i.title)}</small>${i.fixed ? `<small class="fix">Corregir en ${esc(i.fixed)}</small>` : ""}${i.via && /^https?:/.test(i.via) ? `<small class="mono">${esc(i.via)}</small>` : ""}</span>
+      </div>`,
+    )
+    .join("");
+  const outdated = (a.outdated ?? [])
+    .slice(0, 30)
+    .map(
+      (o) => `<div class="quality-row">
+        <span class="q-kind">versión</span>
+        <span class="grow"><strong>${esc(o.package)}</strong><small class="mono">${esc(o.current ?? "?")} → ${esc(o.latest ?? "?")}${o.wanted && o.wanted !== o.latest ? ` · compatible: ${esc(o.wanted)}` : ""}</small></span>
+      </div>`,
+    )
+    .join("");
+  const sum = a.summary;
+  return section(
+    "audit",
+    "box",
+    "Dependencias",
+    "Vulnerabilidades conocidas y paquetes desactualizados en npm, Composer o pip",
+    `<div class="row-btns">
+      <button class="btn" data-action="auditScan" ${a.busy ? "disabled" : ""}>${icon("shield")}${a.busy ? "Revisando…" : "Revisar dependencias"}</button>
+      <button class="btn ghost" data-action="auditExplain" ${a.items?.length ? "" : "disabled"}>${icon("sparkle")}Explicar con IA</button>
+    </div>
+    ${a.provider ? `<p class="muted">Fuente: ${esc(a.provider)}${sum ? ` · ${sum.total} hallazgo(s)` : ""}</p>` : ""}
+    ${sum ? `<div class="chips">${["critical", "high", "moderate", "low"].map((k) => (sum[k] ? `<span class="sev ${k}">${sum[k]} ${k}</span>` : "")).join("")}</div>` : ""}
+    ${a.error ? `<div class="notice">${icon("warning")}<div>${esc(a.error)}</div></div>` : ""}
+    ${
+      a.items?.length
+        ? items
+        : a.at
+          ? `<p class="ok-line">${icon("check")}No se encontraron vulnerabilidades conocidas.</p>`
+          : `<p class="muted">Se usa la herramienta oficial de tu ecosistema; no instala ni actualiza nada.</p>`
+    }
+    ${
+      a.outdated?.length
+        ? `<details class="sub" data-id="audit-outdated" ${openAttr("audit-outdated")}><summary>${icon("download")}Dependencias desactualizadas (${a.outdated.length})</summary>${outdated}</details>`
+        : ""
+    }`,
+  );
+}
+
 // --- Ajustes: colores del código y modelos ---------------------------------------------
+/** @param {{ratio: number, level: string}|undefined} check */
+function contrastBadge(check) {
+  if (!check) return "";
+  const label = check.level === "AA-grande" ? "AA+" : check.level;
+  return ` <span class="contrast ${esc(check.level)}" title="Contraste ${check.ratio}:1">${esc(label)}</span>`;
+}
+
 function colorsSection(s) {
   const c = s.colors;
   if (!c) return "";
-  // Sin tema aplicado, los selectores parten del preset oscuro (igual que el servicio).
-  const scheme = c.scheme ?? c.presets[0];
-  const activeId = c.scheme?.id;
-  const swatches = (colors) =>
-    ["tag", "function", "string", "keyword", "comment"]
-      .map((k) => `<i style="background:${esc(colors[k])}"></i>`)
-      .join("");
-  const presets = c.presets
-    .map(
-      (p) => `<button class="theme-card ${p.id === activeId ? "active" : ""}" data-action="applyColorPreset" data-id="${esc(p.id)}" aria-pressed="${p.id === activeId}">
-        <span class="theme-top"><span class="theme-name">${esc(p.label)}</span>${p.id === activeId ? `<span class="state">${icon("check")}Activo</span>` : ""}</span>
-        <span class="theme-swatches">${swatches(p.colors)}</span>
-      </button>`,
-    )
-    .join("");
+  const scheme = c.scheme ?? null;
   const value = (key) =>
     key === "background" ? scheme?.background : key === "foreground" ? scheme?.foreground : scheme?.colors?.[key];
   const fields = c.fields
     .map(
-      (f) => `<label class="color-field"><span>${esc(f.label)}</span>
+      (f) => `<label class="color-field"><span>${esc(f.label)}${contrastBadge(c.contrast?.[f.key])}</span>
         <input id="color-${esc(f.key)}" type="color" value="${esc(value(f.key) ?? "#000000")}" data-color="${esc(f.key)}" aria-label="${esc(f.label)}">
       </label>`,
     )
     .join("");
-  const currentLabel = c.scheme
-    ? `Activo: <strong>${esc(c.scheme.label)}</strong>`
-    : "Todavía no has aplicado un tema de GhostCode.";
+
+  const brackets = c.brackets;
+  const levels = brackets.levels
+    .map((color, i) => {
+      const label = i === 0 ? "Nivel 1 · padre" : `Nivel ${i + 1} · hijo ${i}`;
+      return `<label class="color-field"><span>${label}${contrastBadge(c.bracketContrast?.[i])}</span>
+        <input id="bracket-${i}" type="color" value="${esc(color)}" data-bracket="${i}" aria-label="${esc(label)}">
+      </label>`;
+    })
+    .join("");
+
   return section(
     "settings",
     "settings",
     "Apariencia del código",
-    "Elige un tema o cambia los colores base del código y del editor",
-    `<p class="colors-current" id="colorsCurrent">${currentLabel}</p>
-    <div class="theme-grid">${presets}</div>
-    <details class="sub" ${activeId && activeId !== "custom" ? "" : "open"}>
+    "Personaliza los colores del código, los corchetes y sus guías",
+    `<details class="sub" data-id="settings-base-colors" ${openAttr("settings-base-colors")}>
       <summary>${icon("settings")}Personalizar colores</summary>
       <div class="color-grid">${fields}</div>
-      <p class="muted">Los cambios se aplican al instante en todos tus proyectos.</p>
+      <p class="muted">Los cambios se aplican al instante en todos tus proyectos. <span class="contrast AAA">AAA</span> y <span class="contrast AA">AA</span> indican buen contraste; <span class="contrast bajo">bajo</span> avisa de que cuesta leerlo.</p>
+    </details>
+    <details class="sub" data-id="settings-brackets" ${openAttr("settings-brackets")}>
+      <summary>${icon("layers")}Corchetes y llaves</summary>
+      <p class="muted">Un color por profundidad: el nivel 1 es el par padre y del 2 al 6 los niveles anidados. Se aplican tanto a <code>{ }</code> como a <code>[ ]</code>. El contraste se mide sobre el fondo del tema actual.</p>
+      <div class="color-grid">${levels}</div>
+      <div class="tiles">
+        <div class="tile">
+          <span class="tile-icon">${icon("vertical")}</span>
+          <span class="grow"><strong>Guías de conexión</strong><small>La línea vertical que une la apertura y el cierre de cada par</small></span>
+          ${toggle(brackets.guides, "toggleBracketGuides", "Colorear las guías de conexión")}
+        </div>
+        <div class="tile">
+          <span class="tile-icon">${icon("indent")}</span>
+          <span class="grow"><strong>Guías de indentación</strong><small>Colorea también las líneas verticales de sangría</small></span>
+          ${toggle(brackets.indentation, "toggleBracketIndent", "Colorear las guías de indentación")}
+        </div>
+      </div>
     </details>
     <div class="row-btns">
       <button class="btn ghost" data-action="resetColors" title="${c.hasBackup ? "Volver a los estilos que tenías antes" : "Todavía no hay estilos guardados; se guardarán al aplicar un color"}">${icon("refresh")}Restaurar Estilos</button>

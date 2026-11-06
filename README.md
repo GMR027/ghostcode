@@ -36,15 +36,24 @@ Todas están en el panel de GhostCode (icono del fantasma en la barra lateral), 
 | | **Corregir indentación** | Corrige la sangría de la selección o del archivo con el número de espacios que elijas, sin tocar nada más. |
 | | **Atributos en vertical** | En HTML, PHP, Vue, JSX… pone cada atributo de una etiqueta en su propia línea (un atributo por línea), con el cierre `>` o `/>` alineado con la etiqueta. Actúa sobre la selección o todo el archivo y solo toca etiquetas con dos o más atributos. |
 | | **Compactación** | Pliega o despliega el bloque de la función o etiqueta más cercano al cursor (o el que contiene la selección), como las etiquetas hijas de un `div`. No modifica el código: usa el plegado del editor y puedes volver a expandirlo cuando quieras. |
+| | **Refactorizar…** | Muestra los refactors que ofrece el language server en el cursor: extraer función o variable, inline, mover a otro archivo… y aplica el elegido. Funciona en cualquier lenguaje con servidor. |
+| | **Adaptar lo pegado** | Ajusta el código del portapapeles (o la selección) al estilo del archivo: sangría, tabs/espacios, comillas, punto y coma y fin de línea. |
+| | **Asesor de índices SQL** | Sobre una consulta seleccionada, propone índices, una versión reescrita, el porqué y los riesgos (con IA). |
 | | **Explicar al pasar el puntero** | Al pasar el ratón sobre una función, clase, consulta **SQL** o **expresión regular**, muestra qué hace (y avisa si un SQL es vulnerable a inyección). El botón **Ir a función** abre el archivo donde está definida. |
 | **IA** | **Halo IA** | Analiza una carpeta o un repositorio tuyo y aprende cómo escribes (estilo, nombres, hábitos). Un indicador (halo) pasa de gris a un anillo animado mientras analiza y a verde cuando está listo. Mientras VS Code esté abierto, el autocompletado y las herramientas imitan tu estilo. **Guardar temporal** conserva el análisis al cerrar y reabrir VS Code (sin volver a meter las carpetas) hasta que pulses **Limpiar**. |
 | | **Asistente** | Chat con el fantasma de GhostCode. Pega extractos de código y pregúntale lo que necesites: qué hace, por qué falla, dónde está el error, fallas de seguridad, mejoras o cómo refactorizarlo. Recuerda la conversación mientras la sesión de VS Code esté abierta. Puedes copiar y pegar código o usar **Usar selección** para adjuntar lo seleccionado en el editor. `Enter` envía y `Shift+Enter` hace salto de línea. |
 | | **Renombrado en vivo** | Al cambiar el nombre de una variable, función o clase (o una clase CSS), lo cambia en todos los lugares donde se usa: el archivo, el marcado, las hojas de estilo (CSS/SCSS/Sass/Less) y el JavaScript (`querySelector`, `classList`). Si otras páginas usan la clase, te pregunta antes. Incluye «Deshacer». La IA decide las coincidencias dudosas. |
 | | **Metodología BEM** | Sugiere clases `bloque__elemento--modificador` leyendo las etiquetas hijas y su contenido, y el comando **Aplicar BEM al elemento** rellena solo las etiquetas sin clase. Nunca modifica una clase que ya escribiste. |
 | | **Prompt** | Convierte el código seleccionado en un prompt reutilizable para otro proyecto: **Copiar** o **Crear md-prompt** (lo guarda en `PROMPTS.md`). **Prompt y contexto del proyecto** crea `PROJECT-CONTEXT.md`: de qué trata, objetivo, lenguajes, estructura, frontend y backend. |
+| **Calidad** | **Código duplicado y muerto** | Analiza el proyecto sin IA: funciones clonadas por estructura (aunque cambien los nombres), funciones/clases sin referencias e imports sin usar, con enlaces para abrirlos. |
+| | **Accesibilidad** | Revisa el archivo HTML/JSX/Vue/PHP abierto: `alt`, etiquetas de campos, `type` de botones, ids duplicados, foco, `aria-hidden` y `tabindex`. |
+| | **Tests** | Localiza el test del archivo, detecta el framework (Vitest, Jest, PHPUnit, pytest, Go…), ejecuta el comando en una terminal y lista funciones que el test no menciona. |
+| | **Doctor del proyecto** | Comprueba versiones de Node/PHP/Python, lockfiles, dependencias instaladas, `.nvmrc`, `.gitignore` y variables de entorno usadas pero sin definir. |
+| | **Dependencias** | Ejecuta `npm`/`pnpm`/`yarn audit`, `composer audit` o `pip-audit`, agrupa por gravedad, lista paquetes desactualizados y puede explicar el informe con IA. |
 | **Proyecto** | **Conexión GitHub** | Repositorio, rama, cambios y remoto; si no hay repositorio, lo indica. **Generar mensaje de commit** escribe el mensaje a partir de tus cambios. |
+| | **Entrega y archivos** | **Generar CHANGELOG** agrupa los commits desde la última etiqueta y ofrece guardarlo en `CHANGELOG.md`. **Mover o renombrar archivo** actualiza imports, `require`, `include`, `@import` y `url()`. |
 | | **Extensiones recomendadas** | Según los lenguajes y herramientas del proyecto, con botón para instalarlas. En VSCodium (que usa Open VSX) algunas de Microsoft, como Pylance o C# Dev Kit, pueden no estar disponibles: el botón avisa y puedes buscarlas con **Ver**. |
-| **Ajustes** | **Apariencia del código** | Temas de color listos (GhostCode oscuro, claro, Neón, Pastel, Alto contraste y Océano) y personalización por categoría: etiquetas, atributos, funciones, textos, comentarios, palabras clave, números, tipos, variables, operadores, fondo y texto base. Se aplican a todo VS Code/Codium y **Restaurar Estilos** devuelve los colores que tenías antes. |
+| **Ajustes** | **Apariencia del código** | Personalización por categoría: etiquetas, atributos, funciones, textos, comentarios, palabras clave, números, tipos, variables, operadores, fondo y texto base; 6 colores de corchetes por profundidad, guías de conexión e indentación. Avisa del contraste WCAG de cada color y **Restaurar Estilos** devuelve los colores que tenías antes. |
 | | **Modelos** | Los modelos que tienes en Ollama y los recomendados para tu GPU y RAM, con descarga en un clic. |
 
 ---
@@ -161,8 +170,10 @@ Haz clic en el **fantasma** de la barra lateral izquierda:
   entre sesiones; con **Limpiar** se borra por completo;
   en **Asistente** pega código y chatea con el fantasma (funcionamiento, errores, refactorización…), y
   en **Prompt**, selecciona código y pulsa **Crear prompt del código seleccionado**.
-- **Proyecto**: estado del repositorio, **Generar mensaje de commit** y extensiones recomendadas.
-- **Ajustes**: elige o personaliza los colores del código y cambia de modelo local o descarga los recomendados.
+- **Herramientas**: Documentar, Rename, Anotar, Arreglar, Atributos en vertical, Compactación, Indentación, **Refactorizar**, **Adaptar lo pegado** y **Asesor SQL**.
+- **Calidad**: duplicados, código muerto, accesibilidad, tests, doctor del proyecto y auditoría de dependencias.
+- **Proyecto**: estado del repositorio, **Generar mensaje de commit**, **CHANGELOG**, **mover archivos** y extensiones recomendadas.
+- **Ajustes**: personaliza los colores del código (con contraste WCAG) y cambia de modelo local o descarga los recomendados.
 
 Todos los comandos están también en la paleta (`Ctrl+Shift+P` → «GhostCode»).
 

@@ -11,7 +11,15 @@ import { documentFunction } from "./document";
 import { askAssistant } from "./assistant";
 import { askChat } from "./chat";
 import { ColorsService } from "./colors";
-import { COLOR_PRESETS } from "./core/colors";
+import { AuditService } from "./audit";
+import { generateChangelog } from "./changelog";
+import { ProjectDoctor } from "./projectDoctor";
+import { QualityService } from "./quality";
+import { TestExplorer } from "./testExplorer";
+import { adaptPasted } from "./adaptPaste";
+import { moveFileCommand } from "./moveFileCommand";
+import { refactorAtCursor } from "./refactor";
+import { adviseSqlIndexes } from "./sqlAdvisor";
 import { fixWithAI, GhostCodeActions } from "./fix";
 import { generateCommitMessage, GitInfo } from "./git";
 import { ExplainHoverProvider, type ExplanationRef } from "./hover";
@@ -40,12 +48,16 @@ export function activate(context: vscode.ExtensionContext) {
   const files = new WorkspaceFiles();
   const halo = new HaloService(context.globalStorageUri.fsPath, context.secrets, toolMode, log);
   const colors = new ColorsService(context);
+  const quality = new QualityService(files, log);
+  const doctor = new ProjectDoctor(files, log);
+  const tests = new TestExplorer(files);
+  const audit = new AuditService(files, log);
   void halo.restore();
   setChatStyle(() => halo.chatContext());
   const provider = new GhostCodeProvider(() => backend, status, log, project, halo);
   const git = new GitInfo();
   const paths = new PathChecker(files, project);
-  const panel = new GhostCodePanel(context, () => backend?.label, () => lastMode, { git, project, halo, paths, files, colors });
+  const panel = new GhostCodePanel(context, () => backend?.label, () => lastMode, { git, project, halo, paths, files, colors, quality, doctor, tests, audit }, log);
   const liveRename = new LiveRename(context.secrets, toolMode, log);
   const hover = new ExplainHoverProvider(context.secrets, toolMode, log, project);
   const hasGit = async () => (await git.status()).status === "repo";
@@ -112,16 +124,6 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("ghostcode.fixIndentation", (spaces?: number) => fixIndentation(spaces)),
     vscode.commands.registerCommand("ghostcode.verticalAttributes", () => verticalizeTagAttributes()),
     vscode.commands.registerCommand("ghostcode.toggleCompact", () => toggleCompact()),
-    vscode.commands.registerCommand("ghostcode.colors.pick", async () => {
-      const picked = await vscode.window.showQuickPick(
-        COLOR_PRESETS.map((p) => ({ label: p.label, description: p.id, id: p.id })),
-        { title: "GhostCode: colores del código", placeHolder: "Elige un tema de color" },
-      );
-      if (picked) {
-        await colors.applyPreset(picked.id);
-        panel.refresh();
-      }
-    }),
     vscode.commands.registerCommand("ghostcode.colors.reset", async () => {
       if (await colors.reset()) panel.refresh();
     }),
@@ -183,11 +185,31 @@ export function activate(context: vscode.ExtensionContext) {
       await insertComment(doc, ref.line, ref.lines);
     }),
     vscode.commands.registerCommand("ghostcode.refreshPanel", () => panel.refreshModels()),
+    vscode.commands.registerCommand("ghostcode.refactor", () => refactorAtCursor()),
+    vscode.commands.registerCommand("ghostcode.adaptPaste", () => adaptPasted()),
+    vscode.commands.registerCommand("ghostcode.quality.scan", async () => {
+      await quality.scan();
+      panel.refresh();
+    }),
+    vscode.commands.registerCommand("ghostcode.doctor", async () => {
+      await doctor.check(true);
+      panel.refresh();
+    }),
+    vscode.commands.registerCommand("ghostcode.tests.open", () => tests.openTest()),
+    vscode.commands.registerCommand("ghostcode.tests.run", () => tests.runTest()),
+    vscode.commands.registerCommand("ghostcode.audit", async () => {
+      await audit.scan();
+      panel.refresh();
+    }),
+    vscode.commands.registerCommand("ghostcode.audit.explain", () => audit.explain(context.secrets, toolMode(), log)),
+    vscode.commands.registerCommand("ghostcode.changelog", () => generateChangelog(log)),
+    vscode.commands.registerCommand("ghostcode.moveFile", (uri?: vscode.Uri) => moveFileCommand(files, log, uri)),
+    vscode.commands.registerCommand("ghostcode.sqlIndex", () => adviseSqlIndexes(context.secrets, toolMode(), log)),
   );
 
   const ready = reload();
   // API mínima para las pruebas de integración.
-  return { provider, ready, panel, project, git, halo, paths, files };
+  return { provider, ready, panel, project, git, halo, paths, files, quality, doctor, tests, audit };
 }
 
 export function deactivate(): void {}

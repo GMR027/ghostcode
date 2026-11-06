@@ -79,120 +79,25 @@ const SEMANTIC_TYPES: Partial<Record<ColorCategory, string[]>> = {
   operator: ["operator"],
 };
 
-export const COLOR_PRESETS: ColorScheme[] = [
-  {
-    id: "ghost-dark",
-    label: "GhostCode oscuro",
-    background: "#0f1117",
-    foreground: "#d7dce5",
-    colors: {
-      tag: "#ff7a90",
-      attribute: "#e6c07b",
-      function: "#7cc7ff",
-      string: "#a8d08d",
-      comment: "#6b7280",
-      keyword: "#c792ea",
-      number: "#f78c6c",
-      type: "#ffcb6b",
-      variable: "#d7dce5",
-      operator: "#89ddff",
-    },
+/** Paleta base desde la que parte cualquier personalización. */
+export const DEFAULT_SCHEME: ColorScheme = {
+  id: "default",
+  label: "Personalizado",
+  background: "#0f1117",
+  foreground: "#d7dce5",
+  colors: {
+    tag: "#ff7a90",
+    attribute: "#e6c07b",
+    function: "#7cc7ff",
+    string: "#a8d08d",
+    comment: "#6b7280",
+    keyword: "#c792ea",
+    number: "#f78c6c",
+    type: "#ffcb6b",
+    variable: "#d7dce5",
+    operator: "#89ddff",
   },
-  {
-    id: "ghost-light",
-    label: "GhostCode claro",
-    background: "#fbfbfd",
-    foreground: "#24292f",
-    colors: {
-      tag: "#c7254e",
-      attribute: "#a0522d",
-      function: "#0550ae",
-      string: "#0a7d32",
-      comment: "#6e7781",
-      keyword: "#8250df",
-      number: "#b35900",
-      type: "#953800",
-      variable: "#24292f",
-      operator: "#cf222e",
-    },
-  },
-  {
-    id: "neon",
-    label: "Neón",
-    background: "#0a0a12",
-    foreground: "#e6e6ff",
-    colors: {
-      tag: "#ff2e97",
-      attribute: "#ffd166",
-      function: "#00e5ff",
-      string: "#a6ff4d",
-      comment: "#5c5c8a",
-      keyword: "#d78bff",
-      number: "#ff9f1c",
-      type: "#00ffc8",
-      variable: "#e6e6ff",
-      operator: "#ff4d6d",
-    },
-  },
-  {
-    id: "pastel",
-    label: "Pastel",
-    background: "#fdf6f0",
-    foreground: "#4a4453",
-    colors: {
-      tag: "#d17a8c",
-      attribute: "#c9a26b",
-      function: "#7aa6c2",
-      string: "#8fbf8f",
-      comment: "#a9a0a6",
-      keyword: "#a98bc4",
-      number: "#d9a05b",
-      type: "#c9a26b",
-      variable: "#4a4453",
-      operator: "#8fbf8f",
-    },
-  },
-  {
-    id: "high-contrast",
-    label: "Alto contraste",
-    background: "#000000",
-    foreground: "#ffffff",
-    colors: {
-      tag: "#ff4d4d",
-      attribute: "#ffd400",
-      function: "#4dc3ff",
-      string: "#6bff6b",
-      comment: "#b3b3b3",
-      keyword: "#ff9fff",
-      number: "#ffc04d",
-      type: "#b3e5ff",
-      variable: "#ffffff",
-      operator: "#ffffff",
-    },
-  },
-  {
-    id: "ocean",
-    label: "Océano",
-    background: "#0b1b2b",
-    foreground: "#d6e6f5",
-    colors: {
-      tag: "#ff9e64",
-      attribute: "#e0af68",
-      function: "#7aa2f7",
-      string: "#9ece6a",
-      comment: "#5f7e97",
-      keyword: "#bb9af7",
-      number: "#ff9e64",
-      type: "#7dcfff",
-      variable: "#d6e6f5",
-      operator: "#89ddff",
-    },
-  },
-];
-
-export function schemeById(id: string): ColorScheme | undefined {
-  return COLOR_PRESETS.find((p) => p.id === id);
-}
+};
 
 export interface TextMateRule {
   scope: string[];

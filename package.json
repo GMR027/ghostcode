@@ -1,8 +1,8 @@
 {
   "name": "ghostcode",
   "displayName": "GhostCode — Autocompletado IA",
-  "description": "Autocompletado de código con IA (tipo Copilot) en local con Ollama o por API, más herramientas: documentar, arreglar errores, explicar código/SQL/regex y mensajes de commit.",
-  "version": "0.11.0",
+  "description": "Autocompletado de código con IA (tipo Copilot) en local con Ollama o por API, más herramientas: documentar, arreglar errores, explicar código/SQL/regex, calidad, tests, accesibilidad, dependencias y mensajes de commit.",
+  "version": "0.12.0",
   "publisher": "edgar",
   "author": {
     "name": "GMR027",
@@ -97,10 +97,6 @@
         "title": "GhostCode: Compactar o expandir bloque"
       },
       {
-        "command": "ghostcode.colors.pick",
-        "title": "GhostCode: Elegir colores del código"
-      },
-      {
         "command": "ghostcode.colors.reset",
         "title": "GhostCode: Restaurar estilos anteriores"
       },
@@ -173,6 +169,50 @@
       {
         "command": "ghostcode.projectContext",
         "title": "GhostCode: Prompt y contexto del proyecto (PROJECT-CONTEXT.md)"
+      },
+      {
+        "command": "ghostcode.refactor",
+        "title": "GhostCode: Refactorizar (extraer, mover, inline…)"
+      },
+      {
+        "command": "ghostcode.adaptPaste",
+        "title": "GhostCode: Adaptar código pegado al estilo del archivo"
+      },
+      {
+        "command": "ghostcode.quality.scan",
+        "title": "GhostCode: Analizar calidad (duplicados y código muerto)"
+      },
+      {
+        "command": "ghostcode.doctor",
+        "title": "GhostCode: Revisar el entorno del proyecto"
+      },
+      {
+        "command": "ghostcode.tests.open",
+        "title": "GhostCode: Ir al test del archivo"
+      },
+      {
+        "command": "ghostcode.tests.run",
+        "title": "GhostCode: Ejecutar el test del archivo"
+      },
+      {
+        "command": "ghostcode.audit",
+        "title": "GhostCode: Revisar vulnerabilidades de dependencias"
+      },
+      {
+        "command": "ghostcode.audit.explain",
+        "title": "GhostCode: Explicar la auditoría de dependencias con IA"
+      },
+      {
+        "command": "ghostcode.changelog",
+        "title": "GhostCode: Generar CHANGELOG desde los commits"
+      },
+      {
+        "command": "ghostcode.moveFile",
+        "title": "GhostCode: Mover o renombrar archivo (actualiza imports)"
+      },
+      {
+        "command": "ghostcode.sqlIndex",
+        "title": "GhostCode: Asesor de índices SQL"
       }
     ],
     "viewsContainers": {
@@ -246,6 +286,28 @@
           "command": "ghostcode.toggleCompact",
           "when": "editorTextFocus",
           "group": "1_modification@98"
+        },
+        {
+          "command": "ghostcode.refactor",
+          "when": "editorTextFocus && !editorReadonly",
+          "group": "1_modification@85"
+        },
+        {
+          "command": "ghostcode.adaptPaste",
+          "when": "editorTextFocus && !editorReadonly",
+          "group": "1_modification@86"
+        },
+        {
+          "command": "ghostcode.sqlIndex",
+          "when": "editorTextFocus",
+          "group": "1_modification@99"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "ghostcode.moveFile",
+          "when": "resourceScheme == file",
+          "group": "1_modification@60"
         }
       ],
       "commandPalette": [

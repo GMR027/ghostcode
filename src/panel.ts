@@ -3,6 +3,10 @@ import { OllamaBackend } from "./backends/ollama";
 import { enableApiMode, pullModel } from "./commands";
 import { cfg, defaultApiModel, PROVIDER_LABELS, update } from "./config";
 import type { ColorsService } from "./colors";
+import type { AuditService } from "./audit";
+import type { ProjectDoctor } from "./projectDoctor";
+import type { QualityService } from "./quality";
+import type { TestExplorer } from "./testExplorer";
 import { describeHardware, isCompletionOnly, pickChatModel, suggestModels } from "./core/models";
 import type { ChatMessage } from "./core/types";
 import type { GitInfo } from "./git";
@@ -21,6 +25,10 @@ export interface PanelServices {
   paths: PathChecker;
   files: WorkspaceFiles;
   colors: ColorsService;
+  quality: QualityService;
+  doctor: ProjectDoctor;
+  tests: TestExplorer;
+  audit: AuditService;
 }
 
 /** Mensajes que envía la vista (media/panel.js). */
@@ -32,12 +40,15 @@ type Msg =
         | "compactToggle"
         | "commit" | "gitInit" | "publish" | "openRemote" | "openScm" | "settings"
         | "haloBrowse" | "haloWorkspace" | "haloSave" | "haloClear" | "chatClear" | "chatSelection" | "prompt" | "projectContext" | "refreshExtensions"
-        | "resetColors";
+        | "resetColors" | "toggleBracketGuides" | "toggleBracketIndent"
+        | "qualityScan" | "doctorCheck" | "testOpen" | "testRun" | "testRefresh" | "auditScan" | "auditExplain"
+        | "refactor" | "adaptPaste" | "changelog" | "moveFile" | "sqlIndex";
     }
   | { type: "indent"; spaces?: string }
   | { type: "indentSize"; value: string }
-  | { type: "applyColorPreset"; id: string }
   | { type: "colorChange"; key: string; value: string }
+  | { type: "bracketChange"; index: string; value: string }
+  | { type: "openAt"; uri: string; line: string }
   | { type: "haloAnalyze" | "chatSend"; value: string }
   | { type: "haloRemove"; id: string }
   | { type: "copyPrompt" | "savePrompt"; value: string }
@@ -65,6 +76,7 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
     private readonly getBackendLabel: () => string | undefined,
     private readonly getLastMode: () => "local" | "api",
     private readonly services: PanelServices,
+    private readonly log: vscode.LogOutputChannel,
   ) {
     // Cambios en git, el índice, Halo IA o las rutas: refrescar (agrupando ráfagas de eventos).
     let timer: NodeJS.Timeout | undefined;
@@ -104,6 +116,7 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
   private brokenShown = false;
   private brokenBusy = false;
   private recommendations?: Awaited<ReturnType<typeof extensionRecommendations>>;
+  private doctorStarted = false;
 
   setPrompt(p: GeneratedPrompt): void {
     this.prompt = p;
@@ -181,15 +194,53 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
         return void vscode.commands.executeCommand("ghostcode.verticalAttributes");
       case "compactToggle":
         return void vscode.commands.executeCommand("ghostcode.toggleCompact");
-      case "applyColorPreset":
-        await this.services.colors.applyPreset(m.id);
-        return this.post();
       case "colorChange":
         // Sin repintar el panel: así el selector de color no se cierra al moverlo.
         return this.services.colors.setColor(m.key, m.value);
+      case "bracketChange":
+        return this.services.colors.setBracketLevel(Number(m.index), m.value);
+      case "toggleBracketGuides":
+        await this.services.colors.toggleBracketOption("guides");
+        return this.post();
+      case "toggleBracketIndent":
+        await this.services.colors.toggleBracketOption("indentation");
+        return this.post();
       case "resetColors":
         await this.services.colors.reset();
         return this.post();
+      case "qualityScan":
+        void this.services.quality.scan().then(() => this.post());
+        return this.post();
+      case "doctorCheck":
+        void this.services.doctor.check(true).then(() => this.post());
+        return this.post();
+      case "testOpen":
+        return this.services.tests.openTest();
+      case "testRun":
+        return this.services.tests.runTest();
+      case "testRefresh":
+        return this.post();
+      case "auditScan":
+        void this.services.audit.scan().then(() => this.post());
+        return this.post();
+      case "auditExplain":
+        return this.services.audit.explain(this.context.secrets, cfg().mode === "off" ? "local" : (cfg().mode as "local" | "api"), this.log);
+      case "refactor":
+        return void vscode.commands.executeCommand("ghostcode.refactor");
+      case "adaptPaste":
+        return void vscode.commands.executeCommand("ghostcode.adaptPaste");
+      case "changelog":
+        return void vscode.commands.executeCommand("ghostcode.changelog");
+      case "moveFile":
+        return void vscode.commands.executeCommand("ghostcode.moveFile");
+      case "sqlIndex":
+        return void vscode.commands.executeCommand("ghostcode.sqlIndex");
+      case "openAt": {
+        const pos = new vscode.Position(Math.max(0, Number(m.line) - 1), 0);
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(m.uri));
+        await vscode.window.showTextDocument(doc, { selection: new vscode.Range(pos, pos) });
+        return;
+      }
       case "haloAnalyze":
         await this.services.halo.analyze(m.value);
         return;
@@ -369,6 +420,11 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
     const c = cfg();
     const hw = await getHardware();
     const names = this.installed?.map((m) => m.name) ?? [];
+    const doctor = this.services.doctor.state();
+    if (!doctor.at && !doctor.busy && !this.doctorStarted && vscode.workspace.workspaceFolders?.length) {
+      this.doctorStarted = true;
+      void this.services.doctor.check().then(() => this.post());
+    }
     return {
       enabled: c.mode !== "off",
       mode: c.mode === "off" ? this.getLastMode() : c.mode,
@@ -396,6 +452,10 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
       chat: this.chat,
       chatBusy: this.chatBusy,
       colors: await this.services.colors.state(),
+      quality: this.services.quality.state(),
+      doctor: this.services.doctor.state(),
+      tests: await this.services.tests.state(),
+      audit: this.services.audit.state(),
       prompt: this.prompt,
       promptBusy: this.promptBusy,
       promptsFile: c.promptsFile,
@@ -428,7 +488,7 @@ export class GhostCodePanel implements vscode.WebviewViewProvider {
 <title>GhostCode</title>
 </head>
 <body>
-<div id="app"><p class="muted">Cargando…</p></div>
+<div id="app"><div class="boot"><span class="boot-ring" aria-hidden="true"></span><p class="muted">Cargando GhostCode…</p><span class="boot-bar" aria-hidden="true"><i></i></span></div></div>
 <script nonce="${nonce}" src="${js}"></script>
 </body>
 </html>`;
